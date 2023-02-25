@@ -31,27 +31,4 @@ namespace Breezee.AutoSQLExecutor.Core
             Value = value;
         }
     }
-
-    /// <summary>
-    /// 方法参数类型
-    /// </summary>
-    public enum FuncParamType
-    {
-        String,
-        DateTime,
-        Int,
-        DataTable,
-        IDictionaryString,
-        IDictionaryObject
-    }
-
-    /// <summary>
-    /// 方法参数录入类型
-    /// </summary>
-    public enum FuncParamInputType
-    {
-        Option,//可选的参数
-        MustNotNull, //必须的参数且值不能为空
-        MustCanNull//必须的参数但可为空值
-    }
 }

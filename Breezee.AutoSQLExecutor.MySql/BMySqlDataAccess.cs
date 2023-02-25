@@ -1,4 +1,5 @@
 ﻿using Breezee.AutoSQLExecutor.Core;
+using Breezee.Core.Interface;
 using MySql.Data.MySqlClient;
 using System;
 using System.Collections.Generic;
@@ -15,7 +16,7 @@ namespace Breezee.AutoSQLExecutor.MySql
     public class BMySqlDataAccess: IDataAccess
     {
         #region 属性
-        public override DataBaseType UseDataBaseType
+        public override DataBaseType DataBaseType
         {
             get { return DataBaseType.MySql; }
         }
@@ -71,12 +72,12 @@ namespace Breezee.AutoSQLExecutor.MySql
         public override void ModifyConnectString(DbServerInfo server)
         {
             DbServer = server;
-            _ConnectionString = string.Format("Server={0};Database={1};Uid={2};Pwd={3};Allow User Variables=True;", server.ServerName, server.Database, server.UserName, server.Password);
+            _ConnectionString = server.UseConnString ? server.ConnString : string.Format("Server={0};;Port={1};Database={2};Uid={3};Pwd={4};Charset=utf8;AllowUserVariables=true;", server.ServerName, server.PortNo, server.Database, server.UserName, server.Password);
         }
         #endregion
 
         #region 实现字典转换为DB服务器方法
-        protected override DbServerInfo Dict2DbServer(Dictionary<string, string> dic)
+        protected override DbServerInfo Dic2DbServer(Dictionary<string, string> dic)
         {
             DbServerInfo server = new DbServerInfo();
             server.DatabaseType = DataBaseType.MySql;
@@ -116,7 +117,7 @@ namespace Breezee.AutoSQLExecutor.MySql
         /// <param name="sParamKeyValue">参数值字典</param>
         /// <param name="conn">连接</param>
         /// <returns>表</returns>
-        public override DataTable QueryHadParamSqlData(string sHadParaSql, List<BaseFuncParam> listParam = null, DbConnection conn = null, DbTransaction dbTran = null)
+        public override DataTable QueryHadParamSqlData(string sHadParaSql, List<FuncParam> listParam = null, DbConnection conn = null, DbTransaction dbTran = null)
         {
             try
             {
@@ -134,7 +135,7 @@ namespace Breezee.AutoSQLExecutor.MySql
                 }
                 if (listParam == null)
                 {
-                    listParam = new List<BaseFuncParam>();
+                    listParam = new List<FuncParam>();
                 }
                 //构造命令
                 MySqlCommand sqlCommon;
@@ -150,7 +151,7 @@ namespace Breezee.AutoSQLExecutor.MySql
                 MySqlDataAdapter adapter = new MySqlDataAdapter(sqlCommon);
                 if (listParam != null)
                 {
-                    foreach (BaseFuncParam item in listParam)
+                    foreach (FuncParam item in listParam)
                     {
                         MySqlParameter sp = new MySqlParameter(item.Code, item.Value);
                         if (item.FuncParamType == FuncParamType.DateTime)
@@ -193,7 +194,7 @@ namespace Breezee.AutoSQLExecutor.MySql
         /// </summary>
         /// <param name="strSql">要执行的SQL</param>
         /// <returns>返回影响记录条数</returns>
-        public override int ExecuteNonQueryHadParam(string sHadParaSql, List<BaseFuncParam> listParam = null, DbConnection conn = null, DbTransaction dbTran = null)
+        public override int ExecuteNonQueryHadParamSql(string sHadParaSql, List<FuncParam> listParam = null, DbConnection conn = null, DbTransaction dbTran = null)
         {
             //数据库连接是否为空
             if (conn == null)
@@ -220,7 +221,7 @@ namespace Breezee.AutoSQLExecutor.MySql
 
             if (listParam != null)
             {
-                foreach (BaseFuncParam item in listParam)
+                foreach (FuncParam item in listParam)
                 {
                     MySqlParameter sp = new MySqlParameter(item.Code, item.Value);
                     if (item.FuncParamType == FuncParamType.DateTime)
@@ -738,7 +739,7 @@ namespace Breezee.AutoSQLExecutor.MySql
             IDictionary<string, string> dic = new Dictionary<string, string>();
             dic["TABLE_SCHEMA"] = sSchema;
             dic["TABLE_NAME"] = sTableName;
-            DataTable dtSource = QueryAutoParamData(sSql, dic);
+            DataTable dtSource = QueryAutoParamSqlData(sSql, dic);
             DataTable dtReturn = DT_SchemaTable;
             foreach (DataRow drS in dtSource.Rows)
             {
@@ -776,7 +777,7 @@ namespace Breezee.AutoSQLExecutor.MySql
 
             IDictionary<string, string> dic = new Dictionary<string, string>();
             dic["TABLE_NAME"] = sTableName;
-            DataTable dtSource = QueryAutoParamData(sSql, dic);
+            DataTable dtSource = QueryAutoParamSqlData(sSql, dic);
             DataTable dtReturn = DT_SchemaTableColumn;
             foreach (DataRow drS in dtSource.Rows)
             {

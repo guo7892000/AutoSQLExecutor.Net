@@ -8,13 +8,14 @@ using System.Data.Common;
 using System.Xml;
 using Breezee.AutoSQLExecutor.Core;
 using System.Collections;
+using Breezee.Core.Interface;
 
 namespace Breezee.AutoSQLExecutor.SQLite
 {
     public class BSQLiteDataAccess: IDataAccess
     {
         #region 属性
-        public override DataBaseType UseDataBaseType
+        public override DataBaseType DataBaseType
         {
             get { return DataBaseType.SQLite; }
         }
@@ -68,8 +69,8 @@ namespace Breezee.AutoSQLExecutor.SQLite
         public override void ModifyConnectString(DbServerInfo server)
         {
             /*连接字符串示例：Data Source=WorkHelper.db;Version=3;Pooling=True;Max Pool Size=100;Password=myPassword; */
-            _ConnectionString = string.Format("Data Source={0};Version=3;Pooling=True;Max Pool Size=100", server.ServerName);
-            if (!string.IsNullOrEmpty(server.Password))
+            _ConnectionString = server.UseConnString ? server.ConnString : string.Format("Data Source={0};Version=3;Pooling=True;Max Pool Size=100", server.ServerName);
+            if (!server.UseConnString && !string.IsNullOrEmpty(server.Password))
             {
                 _ConnectionString += string.Format(";Password={0}", server.Password);//加密后能打开连接，但查询不了数据
             }
@@ -77,7 +78,7 @@ namespace Breezee.AutoSQLExecutor.SQLite
         #endregion
 
         #region 实现字典转换为DB服务器方法
-        protected override DbServerInfo Dict2DbServer(Dictionary<string, string> dic)
+        protected override DbServerInfo Dic2DbServer(Dictionary<string, string> dic)
         {
             DbServerInfo server = new DbServerInfo();
             server.DatabaseType = DataBaseType.Oracle;
@@ -109,7 +110,7 @@ namespace Breezee.AutoSQLExecutor.SQLite
         /// <param name="sParamKeyValue">参数值字典</param>
         /// <param name="conn">连接</param>
         /// <returns>表</returns>
-        public override DataTable QueryHadParamSqlData(string sHadParaSql, List<BaseFuncParam> listParam = null, DbConnection conn = null, DbTransaction dbTran = null)
+        public override DataTable QueryHadParamSqlData(string sHadParaSql, List<FuncParam> listParam = null, DbConnection conn = null, DbTransaction dbTran = null)
         {
             try
             {
@@ -127,7 +128,7 @@ namespace Breezee.AutoSQLExecutor.SQLite
                 }
                 if (listParam == null)
                 {
-                    listParam = new List<BaseFuncParam>();
+                    listParam = new List<FuncParam>();
                 }
                 //构造命令
                 SQLiteCommand sqlCommon;
@@ -143,7 +144,7 @@ namespace Breezee.AutoSQLExecutor.SQLite
                 SQLiteDataAdapter adapter = new SQLiteDataAdapter(sqlCommon);
                 if (listParam != null)
                 {
-                    foreach (BaseFuncParam item in listParam)
+                    foreach (FuncParam item in listParam)
                     {
                         SQLiteParameter sp = new SQLiteParameter(item.Code, item.Value);
                         if (item.FuncParamType == FuncParamType.DateTime)
@@ -182,7 +183,7 @@ namespace Breezee.AutoSQLExecutor.SQLite
         /// </summary>
         /// <param name="strSql">要执行的SQL</param>
         /// <returns>返回影响记录条数</returns>
-        public override int ExecuteNonQueryHadParam(string sHadParaSql, List<BaseFuncParam> listParam = null, DbConnection conn = null, DbTransaction dbTran = null)
+        public override int ExecuteNonQueryHadParamSql(string sHadParaSql, List<FuncParam> listParam = null, DbConnection conn = null, DbTransaction dbTran = null)
         {
             //数据库连接是否为空
             if (conn == null)
@@ -209,7 +210,7 @@ namespace Breezee.AutoSQLExecutor.SQLite
 
             if (listParam != null)
             {
-                foreach (BaseFuncParam item in listParam)
+                foreach (FuncParam item in listParam)
                 {
                     SQLiteParameter sp = new SQLiteParameter(item.Code, item.Value);
                     if (item.FuncParamType == FuncParamType.DateTime)
@@ -745,7 +746,7 @@ namespace Breezee.AutoSQLExecutor.SQLite
             {
                 dic["TABLE_NAME"] = sTableName.ToUpper();
             }            
-            DataTable dtSource = QueryAutoParamData(sSql, dic);
+            DataTable dtSource = QueryAutoParamSqlData(sSql, dic);
             DataTable dtReturn = DT_SchemaTable;
             foreach (DataRow drS in dtSource.Rows)
             {

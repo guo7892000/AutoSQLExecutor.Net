@@ -8,21 +8,10 @@ namespace Breezee.AutoSQLExecutor.Core
 {
     public static partial class StaticConstant
     {
-
-        /// <summary>
-        /// 主机厂ID
-        /// </summary>
-        public static readonly string MAIN_ID = "HOST";
-
         /// <summary>
         /// Dictionary唯一ID关键字
         /// </summary>
         public static readonly string UNIQUE_FLAG = "LIFECYCLE_UNID";
-
-        /// <summary>
-        /// 性能追踪开关
-        /// </summary>
-        public static readonly string PERFORMANCE_FLAG = "PERFORMANCE_TRACE_FLAG";
 
         #region 分页相关
         /// <summary>
@@ -78,13 +67,6 @@ namespace Breezee.AutoSQLExecutor.Core
         public static readonly string Dictionary_Key = "VALUE_CODE";
         public static readonly string Dictionary_Value = "VALUE_NAME";
 
-        public static readonly string FRA_SysteAdminUserName = "xtadmin";
-        public static readonly string FRA_MDIFormName = "FMainMDI";
-        //
-        public static readonly string FRA_Skin_MainForm = "MainFormSkin";
-        public static readonly string FRA_Skin_ChildForm = "ChildFormSkin";
-        public static readonly string FRA_SAVE_PROMPT_CONFIG_CODE = "SavePromptType";
-
         #region 返回消息类别定义
         /// <summary>
         /// 返回标记，0失败，1成功
@@ -123,32 +105,6 @@ namespace Breezee.AutoSQLExecutor.Core
 
         #endregion
 
-        #region 网格Tag值定义的分隔字符
-        /// <summary>
-        /// 分隔每个字段属性的字符，注意两者要保持一致
-        /// </summary>
-        public static readonly char FRA_GRID_COLUMN_SPLIT_PROPERT_CHAR = ',';
-        public static readonly string FRA_GRID_COLUMN_SPLIT_PROPERT_STR = ",";
-
-        /// <summary>
-        /// 分隔每个字段的分隔符，注意两者要保持一致
-        /// </summary>
-        public static readonly char FRA_GRID_COLUMN_SPLIT_CHAR = ';';
-        public static readonly string FRA_GRID_COLUMN_SPLIT_STR = ";";
-        #endregion
-
-        /// <summary>
-        /// 菜单路径全路径的分隔符
-        /// Mini框架使用，全功能架构在视图中定义
-        /// </summary>
-        public static readonly string FRA_FULL_MENU_PATH_SPLIT_CHAR = " > ";
-
-        public static readonly string FRA_GRID_ROWNO_STR = "ROWNO";
-        public static readonly string FRA_GRID_IS_SELECTED_STR = "IS_SELECTED";
-        ////Peach应用程序数据目录及文件名
-        //public static readonly string FRA_PEACH_DATA_CONFIG_PATH = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData) + @"\Peach\Config";
-        //public static readonly string FRA_PEACH_DATA_CONFIG_NAME = "all.xml";
-        //public static readonly string FRA_PEACH_SHORT_CUT_MENU_CONFIG_PATH = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData) + @"\Peach\Config\ShortCutMenu";
 
     }
 }

@@ -4,13 +4,18 @@
     <TargetFramework>net6.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <BaseOutputPath>..\bin</BaseOutputPath>
+    <BaseOutputPath>..\..\bin</BaseOutputPath>
   </PropertyGroup>
 
   <ItemGroup>
     <Compile Remove="bin\**" />
     <EmbeddedResource Remove="bin\**" />
     <None Remove="bin\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Autofac" Version="6.5.0" />
+    <PackageReference Include="Castle.Windsor" Version="5.1.2" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Breezee.Core.Interface;
+using System;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Linq;
@@ -30,15 +31,15 @@ namespace Breezee.AutoSQLExecutor.Core
         /// <param name="sXPath">配置文件路径</param>
         /// <param name="sKeyValue">查询条件键值</param>
         /// <returns></returns>
-        public int ExecuteNonQuery(List<BaseFuncParam> listParam = null, DbConnection conn = null, DbTransaction dbTran = null)
+        public int ExecuteNonQuery(List<FuncParam> listParam = null, DbConnection conn = null, DbTransaction dbTran = null)
         {
             try
             {
                 string sSql;
-                List<BaseFuncParam> realParam;
+                List<FuncParam> realParam;
                 GetSqlParam(listParam, out sSql, out realParam);
                 //调用接口方法
-                return DataAccess.ExecuteNonQueryHadParam(sSql, realParam, conn, dbTran); 
+                return DataAccess.ExecuteNonQueryHadParamSql(sSql, realParam, conn, dbTran); 
             }
             catch (Exception ex)
             {
@@ -60,10 +61,10 @@ namespace Breezee.AutoSQLExecutor.Core
             try
             {
                 string sSql;
-                List<BaseFuncParam> realParam;
+                List<FuncParam> realParam;
                 GetSqlParam(dicQuery, out sSql, out realParam);
                 //调用接口方法
-                return DataAccess.ExecuteNonQueryHadParam(sSql, realParam, conn, dbTran);
+                return DataAccess.ExecuteNonQueryHadParamSql(sSql, realParam, conn, dbTran);
             }
             catch (Exception ex)
             {
@@ -86,18 +87,18 @@ namespace Breezee.AutoSQLExecutor.Core
             try
             {
                 string sSql;
-                List<BaseFuncParam> realParam = new List<BaseFuncParam>();
+                List<FuncParam> realParam = new List<FuncParam>();
                 GetSqlParam(dicQuery, out sSql, out realParam);
 
                 foreach (var param in paramArr)
                 {
                     if(realParam.Where(p=>p.Code == param).Count()==0)
                     {
-                        realParam.Add(new BaseFuncParam(param, FuncParamType.String, FuncParamInputType.MustNotNull, dicQuery[param]));
+                        realParam.Add(new FuncParam(param, FuncParamType.String, FuncParamInputType.MustNotNull, dicQuery[param]));
                     }
                 }
                 //调用接口方法
-                return DataAccess.ExecuteNonQueryHadParam(sSql, realParam, conn, dbTran);
+                return DataAccess.ExecuteNonQueryHadParamSql(sSql, realParam, conn, dbTran);
             }
             catch (Exception ex)
             {

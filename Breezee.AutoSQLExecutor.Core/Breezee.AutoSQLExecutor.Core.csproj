@@ -1,22 +1,40 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <BaseOutputPath>..\bin</BaseOutputPath>
+    <BaseOutputPath>..\..\bin</BaseOutputPath>
   </PropertyGroup>
 
   <ItemGroup>
     <Compile Remove="bin\**" />
+    <Compile Remove="Extension\**" />
     <EmbeddedResource Remove="bin\**" />
+    <EmbeddedResource Remove="Extension\**" />
     <None Remove="bin\**" />
+    <None Remove="Extension\**" />
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="org.breezee.MyPeachNet">
-      <HintPath>..\bin\org.breezee.MyPeachNet.dll</HintPath>
-    </Reference>
+    <Compile Remove="Entity\BaseFuncParam.cs" />
+    <Compile Remove="Enum\DataBaseType.cs" />
+    <Compile Remove="Enum\DbServerInfo.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="App.config" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\001_BreezeeCore.Net\Breezee.Core.Interface\Breezee.Core.Interface.csproj" />
+    <ProjectReference Include="..\..\004_MyPeach.Net\MyPeachNet\MyPeachNet.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Config\SQL.Main.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

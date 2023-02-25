@@ -8,6 +8,7 @@ using System.Collections;
 using System.Data.Common;
 using System.Xml;
 using Breezee.AutoSQLExecutor.Core;
+using Breezee.Core.Interface;
 
 namespace Breezee.AutoSQLExecutor.SqlServer
 {
@@ -17,7 +18,7 @@ namespace Breezee.AutoSQLExecutor.SqlServer
     public class BSqlServerDataAccess : IDataAccess
     {
         #region 属性
-        public override DataBaseType UseDataBaseType
+        public override DataBaseType DataBaseType
         {
             get { return DataBaseType.SqlServer; }
         }
@@ -64,7 +65,7 @@ namespace Breezee.AutoSQLExecutor.SqlServer
         #endregion
 
         #region 实现字典转换为DB服务器方法
-        protected override DbServerInfo Dict2DbServer(Dictionary<string, string> dic)
+        protected override DbServerInfo Dic2DbServer(Dictionary<string, string> dic)
         {
             DbServerInfo server = new DbServerInfo();
             server.DatabaseType = DataBaseType.Oracle;
@@ -105,8 +106,8 @@ namespace Breezee.AutoSQLExecutor.SqlServer
         public override void ModifyConnectString(DbServerInfo server)
         {
             /*data source为数据库实例名，initial catalog为数据库名，user id为用户名，password为密码。连接字符串示例：data source=.;initial catalog=AprilSpring;user id=sa;password=sa */
-            _ConnectionString = string.Format("data source={0};user id={1};password={2};TrustServerCertificate=yes", server.ServerName, server.UserName, server.Password);
-            if (!string.IsNullOrEmpty(server.Database))
+            _ConnectionString = server.UseConnString ? server.ConnString : string.Format("data source={0};user id={1};password={2};TrustServerCertificate=yes", server.ServerName, server.UserName, server.Password);
+            if (!server.UseConnString && !string.IsNullOrEmpty(server.Database))
             {
                 _ConnectionString += string.Format(";Initial Catalog={0}", server.Database);
             }
@@ -122,7 +123,7 @@ namespace Breezee.AutoSQLExecutor.SqlServer
         /// <param name="sParamKeyValue">参数值字典</param>
         /// <param name="conn">连接</param>
         /// <returns>表</returns>
-        public override DataTable QueryHadParamSqlData(string sHadParaSql, List<BaseFuncParam> listParam = null, DbConnection conn = null, DbTransaction dbTran = null)
+        public override DataTable QueryHadParamSqlData(string sHadParaSql, List<FuncParam> listParam = null, DbConnection conn = null, DbTransaction dbTran = null)
         {
             try
             {
@@ -140,7 +141,7 @@ namespace Breezee.AutoSQLExecutor.SqlServer
                 }
                 if (listParam == null)
                 {
-                    listParam = new List<BaseFuncParam>();
+                    listParam = new List<FuncParam>();
                 }
                 //构造命令
                 SqlCommand sqlCommon;
@@ -156,7 +157,7 @@ namespace Breezee.AutoSQLExecutor.SqlServer
                 SqlDataAdapter adapter = new SqlDataAdapter(sqlCommon);
                 if (listParam != null)
                 {
-                    foreach (BaseFuncParam item in listParam)
+                    foreach (FuncParam item in listParam)
                     {
                         SqlParameter sp = new SqlParameter(item.Code, item.Value);
                         if (item.FuncParamType == FuncParamType.DateTime)
@@ -196,7 +197,7 @@ namespace Breezee.AutoSQLExecutor.SqlServer
         /// </summary>
         /// <param name="strSql">要执行的SQL</param>
         /// <returns>返回影响记录条数</returns>
-        public override int ExecuteNonQueryHadParam(string sHadParaSql, List<BaseFuncParam> listParam = null, DbConnection conn = null, DbTransaction dbTran = null)
+        public override int ExecuteNonQueryHadParamSql(string sHadParaSql, List<FuncParam> listParam = null, DbConnection conn = null, DbTransaction dbTran = null)
         {
             //数据库连接是否为空
             if (conn == null)
@@ -223,7 +224,7 @@ namespace Breezee.AutoSQLExecutor.SqlServer
 
             if (listParam != null)
             {
-                foreach (BaseFuncParam item in listParam)
+                foreach (FuncParam item in listParam)
                 {
                     SqlParameter sp = new SqlParameter(item.Code, item.Value);
                     if (item.FuncParamType == FuncParamType.DateTime)
@@ -699,7 +700,7 @@ namespace Breezee.AutoSQLExecutor.SqlServer
                 string sSql = @"SELECT TABLE_NAME,COLUMN_NAME FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE WHERE TABLE_NAME='#TABLE_NAME#'";
                 IDictionary<string, string> dic = new Dictionary<string, string>();
                 dic["TABLE_NAME"] = sTableName;
-                DataTable dtPK = QueryAutoParamData(sSql, dic);
+                DataTable dtPK = QueryAutoParamSqlData(sSql, dic);
                 bool isPKOK = false;
 
                 DataTable dtSource = con.GetSchema(DBSchemaString.Columns, new string[] { null, null, sTableName });//使用通用的获取架构方法
@@ -776,7 +777,7 @@ namespace Breezee.AutoSQLExecutor.SqlServer
             dic = new Dictionary<string, string>();
             dic["TABLE_SCHEMA"] = sSchema;
             dic["TABLE_NAME"] = sTableName;
-            DataTable dtSource = QueryAutoParamData(sSql, dic);
+            DataTable dtSource = QueryAutoParamSqlData(sSql, dic);
             DataTable dtReturn = DT_SchemaTable;
             foreach (DataRow drS in dtSource.Rows)
             {
@@ -825,7 +826,7 @@ namespace Breezee.AutoSQLExecutor.SqlServer
 
             IDictionary<string, string> dic = new Dictionary<string, string>();
             dic["TABLE_NAME"] = tableName;
-            DataTable dtSource = QueryAutoParamData(sSql, dic);
+            DataTable dtSource = QueryAutoParamSqlData(sSql, dic);
             DataTable dtReturn = DT_SchemaTableColumn;
             foreach (DataRow drS in dtSource.Rows)
             {

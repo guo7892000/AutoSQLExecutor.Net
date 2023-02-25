@@ -1,13 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using System.Text;
 using System.Data.Common;
 using System.Data;
 using System.Collections;
-using System.Xml;
-using System.Text.RegularExpressions;
 using org.breezee.MyPeachNet;
+using Breezee.Core.Interface;
+using System.IO;
+using System.Collections.Generic;
 
 /*********************************************************************
  * 对象名称：数据访问接口
@@ -26,14 +24,14 @@ namespace Breezee.AutoSQLExecutor.Core
     public abstract class IDataAccess
     {
         #region 变量       
-        public abstract DataBaseType UseDataBaseType { get; }
+        public abstract DataBaseType DataBaseType { get; }
         public abstract string ConnectionString { get; protected set; }
         public abstract ISqlDifferent SqlDiff { get; protected set; }
         public DbConnection Connection { get { return GetCurrentConnection(); } }
 
         public DbServerInfo DbServer { get; protected set; }
 
-        public SqlParsers sqlParsers;
+        public SqlParsers SqlParsers { get; protected set; }
 
         /// <summary>
         /// 字符长度类型集合
@@ -58,7 +56,7 @@ namespace Breezee.AutoSQLExecutor.Core
         /// </summary>
         /// <param name="dicR"></param>
         /// <returns></returns>
-        protected abstract DbServerInfo Dict2DbServer(Dictionary<string, string> dic);
+        protected abstract DbServerInfo Dic2DbServer(Dictionary<string, string> dic);
 
         /// <summary>
         /// 连接字符串转换为DB服务器信息
@@ -77,7 +75,7 @@ namespace Breezee.AutoSQLExecutor.Core
                     dic[arrKeyValue[0].Trim().ToLower()] = arrKeyValue[1].Trim().ToLower();
                 }
             }
-            return Dict2DbServer(dic);
+            return Dic2DbServer(dic);
         }
         #endregion
 
@@ -90,14 +88,14 @@ namespace Breezee.AutoSQLExecutor.Core
         {
             ConnectionString = sConstr;
             DbServer = ConnString2Server(sConstr);
-            sqlParsers = new SqlParsers(new MyPeachNetProperties());
+            SqlParsers = new SqlParsers(new MyPeachNetProperties());
         }
 
         public IDataAccess(DbServerInfo server)
         {
             ModifyConnectString(server);
             DbServer = server;
-            sqlParsers = new SqlParsers(new MyPeachNetProperties());
+            SqlParsers = new SqlParsers(new MyPeachNetProperties());
         }
         #endregion
 
@@ -116,442 +114,189 @@ namespace Breezee.AutoSQLExecutor.Core
         public abstract void ModifyConnectString(DbServerInfo server);
         #endregion
 
-        #region 查询未参数化的SQL语句
+        #region 常用语句
         /// <summary>
-        /// 查询未参数化的SQL语句
+        /// 查询数据
         /// </summary>
-        /// <param name="sNotParamSql">SQL语句</param>
-        /// <param name="sConditionsKeyValue">查询条件</param>
-        /// <param name="dicParamType">特殊参数类型</param>
-        /// <param name="conn">连接</param>
-        /// <param name="dbTran">事务</param>
-        /// <returns>表</returns>
-        public DataTable QueryAutoParamData(string sNotParamSql, IDictionary<string, string> sConditionsKeyValue, IDictionary<string, SqlParamType> dicParamType = null, DbConnection conn = null, DbTransaction dbTran = null)
-        {
-            // 参数化处理
-            ParserResult parserResult = sqlParsers.parse(SqlTypeEnum.SELECT, sNotParamSql, sConditionsKeyValue.ToObjectDict());
-            if (parserResult.Code.equals("0"))
-            {
-                var listParam = new List<BaseFuncParam>();
-                foreach (SqlKeyValueEntity item in parserResult.entityQuery.Values)
-                {
-                    //新参数
-                    var paramNew = new BaseFuncParam(item.KeyName);
-
-                    paramNew.Value = item.KeyValue;
-                    if (dicParamType != null && dicParamType.ContainsKey(item.KeyName))
-                    {
-                        if (dicParamType[item.KeyName] == SqlParamType.DateTime)
-                        {
-                            paramNew.FuncParamType = FuncParamType.DateTime;
-                        }
-                    }
-                    //添加到集合
-                    listParam.Add(paramNew);
-                }
-
-                return QueryHadParamSqlData(parserResult.Sql, listParam, conn, dbTran);
-            }
-            throw new Exception(parserResult.Message);
-        }
-
-        /// <summary>
-        /// 查询未参数化的SQL语句
-        /// </summary>
-        /// <param name="sSql">SQL语句</param>
-        /// <param name="sKeyValue">查询条件</param>
-        /// <param name="conn">连接</param>
-        /// 
-        /// <returns>表</returns>
-        public DataTable QueryAutoParamData(string sNotParamSql, List<BaseFuncParam> listParam = null, DbConnection conn = null, DbTransaction dbTran = null)
-        {
-            IDictionary<string, string> sConditionsKeyValue = new Dictionary<string, string>();
-            foreach (BaseFuncParam item in listParam)
-            {
-                sConditionsKeyValue.Add(item.Code, item.Value.ToString());
-            }
-            // 参数化处理
-            ParserResult parserResult = sqlParsers.parse(SqlTypeEnum.SELECT, sNotParamSql, sConditionsKeyValue.ToObjectDict());
-            if (parserResult.Code.equals("0"))
-            {
-                return QueryHadParamSqlData(sNotParamSql, listParam, conn, dbTran);
-            }
-            throw new Exception(parserResult.Message);
-        }
-        #endregion
-
-        #region 查询已参数化的SQL语句
-        /// <summary>
-        /// 查询已参数化的SQL语句
-        /// </summary>
-        /// <param name="sHadParaSql">SQL语句</param>
-        /// <param name="sParamKeyValue">参数值字典</param>
-        /// <param name="conn">连接</param>
-        /// <returns>表</returns>
-        public DataTable QueryHadParamSqlData(string sHadParaSql, IDictionary<string, string> sParamKeyValue = null, IDictionary<string, SqlParamType> dicParamType = null, DbConnection conn = null, DbTransaction dbTran = null)
-        {
-            var listParam = new List<BaseFuncParam>();
-            foreach (string item in sParamKeyValue.Keys)
-            {
-                //新参数
-                var paramNew = new BaseFuncParam(item);
-
-                paramNew.Value = sParamKeyValue[item];
-                if (dicParamType != null && dicParamType.ContainsKey(item))
-                {
-                    if (dicParamType[item] == SqlParamType.DateTime)
-                    {
-                        paramNew.FuncParamType = FuncParamType.DateTime;
-                    }
-                }
-                //添加到集合
-                listParam.Add(paramNew);
-            }
-
-            return QueryHadParamSqlData(sHadParaSql, listParam, conn, dbTran);
-        }
-
-        /// <summary>
-        /// 【抽象方法】查询已参数化的SQL语句
-        /// </summary>
-        /// <param name="sParaSql">已经参数化的SQL</param>
-        /// <param name="sKeyValue">查询条件键值</param>
+        /// <param name="sNotParamSql">SQL语句或SQL语句配置路径</param>
+        /// <param name="sConditionsKeyValue">条件字典</param>
+        /// <param name="sqlStringType">SQL字符枚举</param>
         /// <param name="conn">数据库连接</param>
+        /// <param name="dbTran">事务</param>
         /// <returns></returns>
-        public abstract DataTable QueryHadParamSqlData(string sHadParaSql, List<BaseFuncParam> listParam = null, DbConnection conn = null, DbTransaction dbTran = null);
+        /// <exception cref="NotImplementedException"></exception>
+        public DataTable QueryData(string sNotParamSql, IDictionary<string, object> sConditionsKeyValue, SqlStringType sqlStringType = SqlStringType.SqlNoParamed, DbConnection conn = null, DbTransaction dbTran = null)
+        {
+            switch (sqlStringType)
+            {
+                case SqlStringType.SqlNoParamed:
+                    return QueryAutoParamSqlData(sNotParamSql, sConditionsKeyValue, null, null);
+                case SqlStringType.SqlParamed:
+                    return QueryHadParamSqlData(sNotParamSql, sConditionsKeyValue, null, null);
+                case SqlStringType.ConfigPathNoParamed:
+                    return QueryAutoParamConfigPathData(sNotParamSql, sConditionsKeyValue, null, null);
+                case SqlStringType.ConfigPathParamed:
+                    return QueryHadParamConfigPathData(sNotParamSql, sConditionsKeyValue, null, null);
+                default:
+                    throw new NotImplementedException();
+            }
+        }
 
-        #endregion
-
-        #region 根据配置文件读取SQL查询
         /// <summary>
-        /// 根据配置文件读取SQL查询
+        /// 查询分页数据
         /// </summary>
-        /// <param name="con">数据库连接</param>
-        /// <param name="sXPath">配置文件路径</param>
-        /// <param name="sKeyValue">查询条件键值</param>
+        /// <param name="sNotParamSql">SQL语句或SQL语句配置路径</param>
+        /// <param name="sConditionsKeyValue">条件字典</param>
+        /// <param name="pParam">分页参数</param>
+        /// <param name="TotalString">合计字符，如SUM(QTY),SUM(PRICE_AMOUT)</param>
+        /// <param name="sqlStringType">SQL字符枚举</param>
+        /// <param name="conn">数据库连接</param>
+        /// <param name="dbTran">事务</param>
         /// <returns></returns>
-        public DataTable QueryDataFromConfigPath(string sXPath, IDictionary<string, string> sKeyValue, IDictionary<string, SqlParamType> dicParamType = null, DbConnection conn = null, DbTransaction dbTran = null)
-        {
-            string sSql = string.Empty;
-            try
-            {
-                // 配置文件的sql语句
-                sSql = SqlConfig.GetGlobalConfigInfo(sXPath);
-                //调用上面的方法查询
-                DataTable dt = QueryAutoParamData(sSql, sKeyValue, dicParamType, conn, dbTran);
-                dt.TableName = sXPath;
-                return dt;
-            }
-            catch (Exception ex)
-            {
-                throw ex;
-            }
-        }
-
-        /// <summary>
-        /// 根据配置文件读取SQL查询
-        /// </summary>
-        /// <param name="con">数据库连接</param>
-        /// <param name="sXPath">配置文件路径</param>
-        /// <param name="sKeyValue">查询条件键值</param>
-        /// <returns></returns>
-        public DataTable QueryDataFromConfigPath(string sXPath, List<BaseFuncParam> listParam = null, DbConnection conn = null, DbTransaction dbTran = null)
-        {
-            string sSql = string.Empty;
-            try
-            {
-                // 配置文件的sql语句
-                sSql = SqlConfig.GetGlobalConfigInfo(sXPath);
-                //调用上面的方法查询
-                DataTable dt = QueryAutoParamData(sSql, listParam, conn, dbTran);
-                dt.TableName = sXPath;
-                return dt;
-            }
-            catch (Exception ex)
-            {
-                throw ex;
-            }
-        }
-
-        /// <summary>
-        /// 根据配置文件读取已参数化SQL查询
-        /// </summary>
-        /// <param name="sHadParaSql">SQL语句</param>
-        /// <param name="sParamKeyValue">参数值字典</param>
-        /// <param name="conn">连接</param>
-        /// <returns>表</returns>
-        public DataTable QueryHadParamSqlDataFromConfigPath(string sXPath, IDictionary<string, string> sParamKeyValue = null, IDictionary<string, SqlParamType> dicParamType = null, DbConnection conn = null, DbTransaction dbTran = null)
-        {
-            try
-            {
-                // 配置文件的sql语句
-                string sHadParamSql = SqlConfig.GetGlobalConfigInfo(sXPath);
-
-                return QueryHadParamSqlData(sHadParamSql, sParamKeyValue, dicParamType, conn, dbTran);
-            }
-            catch (Exception ex)
-            {
-                throw ex;
-            }
-        }
-        #endregion
-
-        #region 查询已参数化的分页SQL语句
-        /// <summary>
-        /// 查询已参数化的分页SQL语句
-        /// </summary>
-        /// <param name="sHadParaSql">SQL语句</param>
-        /// <param name="sParamKeyValue">参数值字典</param>
-        /// <param name="conn">连接</param>
-        /// <returns>表</returns>
-        public IDictionary<string, object> QueryPageHadParamSqlData(string sHadParaSql, PageParam pParam, List<BaseFuncParam> listParam = null, string TotalString = null, DbConnection conn = null, DbTransaction dbTran = null)
-        {
-            try
-            {
-                if (pParam == null || string.IsNullOrEmpty(pParam.PageOrderString))
-                {
-                    throw new Exception("PageParam和其排序字段不能为空！");
-                }
-
-                int pageSize = pParam.PageSize;
-                int pageNo = pParam.PageNO;
-                IDictionary<string, object> dicRes = new Dictionary<string, object>();
-                bool IsCalOtherTotal = false; //是否计算其他统计项
-                if (!string.IsNullOrEmpty(TotalString))
-                {
-                    IsCalOtherTotal = true;
-                }
-                //1.查询总记录数
-                string pageCountSql = "SELECT COUNT(1) FROM (" + sHadParaSql + ") RALL";
-                string[] parms = null;
-                if (IsCalOtherTotal)
-                {
-                    parms = TotalString.Split(new string[] { "," }, StringSplitOptions.None);
-                    pageCountSql = "SELECT COUNT(1)," + TotalString + " FROM (" + sHadParaSql + ") RALL";
-                }
-                //查询
-                DataTable dt = QueryHadParamSqlData(pageCountSql, listParam, conn, dbTran);
-
-                int totalRowCount = dt.Rows.Count > 0 ? int.Parse(dt.Rows[0][0].ToString()) : 0;
-
-                if (IsCalOtherTotal)
-                {
-                    for (int i = 0; i < parms.Length; i++)
-                    {
-                        dicRes[parms[i]] = dt.Rows.Count > 0 ? dt.Rows[0][i + 1].ToString() : "0";
-                    }
-                }
-
-                //2.查询分页数据
-                int pageCount = 0;
-                // 计算总页数
-                if (totalRowCount % pageSize == 0)// 整除
-                {
-                    pageCount = totalRowCount / pageSize;
-                }
-                else // 不整除，总页数加1
-                {
-                    pageCount = totalRowCount / pageSize + 1;
-                }
-                int beginRow = (pageNo - 1) * pageSize + 1;
-                int endRow = pageNo * pageSize;
-
-                //获取公页后的SQL
-                string pageDataSql = GetPageSql(sHadParaSql, pParam, beginRow, endRow);
-
-                DataTable dtData = QueryHadParamSqlData(pageDataSql, listParam, conn, dbTran);
-
-                //3.返回分页结果                
-                dicRes[StaticConstant.TOTAL_COUNT] = totalRowCount; //总记录数
-                dicRes[StaticConstant.PAGE_SIZE] = pageCount; //总页数
-                dicRes[StaticConstant.FRA_QUERY_RESULT] = dtData;
-
-                dicRes[StaticConstant.FRA_RETURN_FLAG] = "1";
-                dicRes[StaticConstant.FRA_USER_MSG] = "查询成功！";
-                return dicRes;
-            }
-            catch (Exception ex)
-            {
-                throw ex;
-            }
-        }
-        
-        /// <summary>
-        /// 获取分页SQL
-        /// </summary>
-        /// <param name="sHadParaSql"></param>
-        /// <returns></returns>
-        public abstract string GetPageSql(string sHadParaSql, PageParam pParam, int beginRow, int endRow);
-        #endregion       
-
-        #region 执行非查询类SQL（只返回影响记录条数）
-        /// <summary>
-        /// 【抽象方法】执行已参数化的SQL语句
-        /// </summary>
-        /// <param name="strSql">要执行的SQL</param>
-        /// <returns>返回影响记录条数</returns>
-        public abstract int ExecuteNonQueryHadParam(string sHadParaSql, List<BaseFuncParam> listParam = null, DbConnection conn = null, DbTransaction dbTran = null);
-
-        /// <summary>
-        /// 执行已参数化的SQL语句
-        /// 为兼容旧的方法使用
-        /// </summary>
-        /// <param name="sHadParaSql"></param>
-        /// <param name="dicParam"></param>
-        /// <param name="conn"></param>
-        /// <param name="tran"></param>
-        /// <param name="keys">参数清单</param>
-        /// <returns></returns>
-        public int ExecuteNonQueryHadParam(string sHadParaSql, IDictionary<string, string> dicParam, DbConnection conn, DbTransaction tran, params string[] keys)
-        {
-            IDictionary<string, string> dicParamReal = new Dictionary<string, string>();
-            if (dicParam != null && dicParam.Keys.Count > 0)
-            {
-                IEnumerable<string> lstKeys = null;
-                string strNoExistsKey = "";
-                if (keys == null || keys.Count() == 0)
-                {
-                    lstKeys = dicParam.Keys.Where(x => x != StaticConstant.UNIQUE_FLAG);
-                }
-                else
-                {
-                    lstKeys = keys;
-                }
-
-                foreach (string key in lstKeys)
-                {
-                    //增加键不存在时，一次抛出提示，以方便修改 hgh2014-10-29
-                    if (!dicParam.ContainsKey(key))
-                    {
-                        strNoExistsKey = strNoExistsKey + key + ",";
-                        continue;
-                    }
-                    //有效的参数
-                    dicParamReal[key] = dicParam[key];
-                }
-                if (!string.IsNullOrEmpty(strNoExistsKey))
-                {
-                    throw new ArgumentNullException("以下键未传入：" + strNoExistsKey.Substring(0, strNoExistsKey.Length - 1));
-                }
-            }
-            //调用执行参数化方法
-            return ExecuteNonQueryHadParam(sHadParaSql, dicParamReal, null, conn, tran);
-        }
-
-        /// <summary>
-        /// 执行已参数化的SQL语句
-        /// </summary>
-        /// <param name="sHadParaSql">SQL语句</param>
-        /// <param name="sParamKeyValue">参数值字典</param>
-        /// <param name="conn">连接</param>
-        /// <returns>表</returns>
-        public int ExecuteNonQueryHadParam(string sHadParaSql, IDictionary<string, string> sParamKeyValue = null, IDictionary<string, SqlParamType> dicParamType = null, DbConnection conn = null, DbTransaction dbTran = null)
-        {
-            var listParam = new List<BaseFuncParam>();
-            foreach (string item in sParamKeyValue.Keys)
-            {
-                //新参数
-                var paramNew = new BaseFuncParam(item);
-
-                paramNew.Value = sParamKeyValue[item];
-                if (dicParamType != null && dicParamType.ContainsKey(item))
-                {
-                    if (dicParamType[item] == SqlParamType.DateTime)
-                    {
-                        paramNew.FuncParamType = FuncParamType.DateTime;
-                    }
-                }
-                //添加到集合
-                listParam.Add(paramNew);
-            }
-
-            return ExecuteNonQueryHadParam(sHadParaSql, listParam, conn, dbTran);
-        }
-
-        /// <summary>
-        /// 执行未参数化的SQL语句
-        /// </summary>
-        /// <param name="strSql">要执行的SQL</param>
-        /// <returns>返回影响记录条数</returns>
-        public int ExecuteNonQueryAutoParam(string sNotParamSql, IDictionary<string, string> dicQuery = null, IDictionary<string, SqlParamType> dicParamType = null, DbConnection conn = null, DbTransaction dbTran = null)
-        {
-            if (dicQuery == null)
-            {
-                dicQuery = new Dictionary<string, string>();
-            }
-            // 参数化处理
-            ParserResult parserResult = sqlParsers.parse(SqlTypeEnum.SELECT, sNotParamSql, dicQuery.ToObjectDict());
-            if (parserResult.Code.equals("0"))
-            {
-                var listParam = new List<BaseFuncParam>();
-                foreach (SqlKeyValueEntity item in parserResult.entityQuery.Values)
-                {
-                    //新参数
-                    var paramNew = new BaseFuncParam(item.KeyName);
-
-                    paramNew.Value = item.KeyValue;
-                    if (dicParamType != null && dicParamType.ContainsKey(item.KeyName))
-                    {
-                        if (dicParamType[item.KeyName] == SqlParamType.DateTime)
-                        {
-                            paramNew.FuncParamType = FuncParamType.DateTime;
-                        }
-                    }
-                    //添加到集合
-                    listParam.Add(paramNew);
-                }
-                return ExecuteNonQueryHadParam(sNotParamSql, listParam, conn, dbTran);
-            }
-            throw new Exception(parserResult.Message);
-        }
-
-        /// <summary>
-        /// 执行未参数化的SQL语句【XML配置路径】
-        /// </summary>
-        /// <param name="strSql">要执行的SQL</param>
-        /// <returns>返回影响记录条数</returns>
-        public int ExecuteNonQueryFromConfigPath(string sXPath, IDictionary<string, string> dicQuery = null, IDictionary<string, SqlParamType> dicParamType = null, DbConnection conn = null, DbTransaction dbTran = null)
-        {
-            string sSql = string.Empty;
-            try
-            {
-                // 配置文件的sql语句
-                sSql = SqlConfig.GetGlobalConfigInfo(sXPath);
-                //调用上面的方法查询
-                return ExecuteNonQueryAutoParam(sSql, dicQuery, dicParamType,conn, dbTran);
-            }
-            catch (Exception ex)
-            {
-                throw ex;
-            }
-        }
-
-        /// <summary>
-        /// 执行已参数化的SQL语句【XML配置路径】
-        /// </summary>
-        /// <param name="sXPath"></param>
-        /// <param name="sParamKeyValue"></param>
-        /// <param name="dicParamType"></param>
-        /// <param name="conn"></param>
-        /// <param name="dbTran"></param>
-        /// <returns></returns>
-        public int ExecuteNonQueryHadParamFromConfigPath(string sXPath, IDictionary<string, string> sParamKeyValue = null, IDictionary<string, SqlParamType> dicParamType = null, DbConnection conn = null, DbTransaction dbTran = null)
+        /// <exception cref="Exception"></exception>
+        /// <exception cref="NotImplementedException"></exception>
+        public IDictionary<string, object> QueryPageData(string sNotParamSql, IDictionary<string, object> sConditionsKeyValue, PageParam pParam, string TotalString = null, SqlStringType sqlStringType = SqlStringType.SqlNoParamed, DbConnection conn = null, DbTransaction dbTran = null)
         {
             // 配置文件的sql语句
-            string sHadParamSql = SqlConfig.GetGlobalConfigInfo(sXPath);
-            return ExecuteNonQueryHadParam(sHadParamSql, sParamKeyValue, dicParamType,conn, dbTran);
-        }
-        #endregion
+            string sSql = sNotParamSql;
+            ParserResult parserResult = null;
+            List<FuncParam> listParam = new List<FuncParam>();
+            switch (sqlStringType)
+            {
+                case SqlStringType.SqlNoParamed:
+                    parserResult = SqlParsers.parse(SqlTypeEnum.SELECT, sSql, sConditionsKeyValue);// 参数化处理
+                    if (parserResult.Code.equals("0"))
+                    {
+                        sSql = parserResult.Sql;
+                        foreach (string sKey in parserResult.ObjectQuery.Keys)
+                        {
+                            //新参数
+                            var paramNew = new FuncParam(sKey);
+                            paramNew.Value = parserResult.ObjectQuery[sKey];
+                            SetParamType(parserResult.ObjectQuery[sKey], paramNew);
+                            //添加到集合
+                            listParam.Add(paramNew);
+                        }
+                    }
+                    else
+                    {
+                        throw new Exception(parserResult.Message);
+                    }
+                    break;
+                case SqlStringType.SqlParamed:
+                    foreach (string sKey in sConditionsKeyValue.Keys)
+                    {
+                        //新参数
+                        var paramNew = new FuncParam(sKey);
+                        paramNew.Value = sConditionsKeyValue[sKey];
+                        SetParamType(sConditionsKeyValue[sKey], paramNew);
+                        //添加到集合
+                        listParam.Add(paramNew);
+                    }
+                    break;
+                case SqlStringType.ConfigPathNoParamed:
+                    sSql = SqlConfig.GetGlobalConfigInfo(sNotParamSql);
+                    parserResult = SqlParsers.parse(SqlTypeEnum.SELECT, sSql, sConditionsKeyValue);// 参数化处理
+                    if (parserResult.Code.equals("0"))
+                    {
+                        sSql = parserResult.Sql;
+                        foreach (string sKey in parserResult.ObjectQuery.Keys)
+                        {
+                            //新参数
+                            var paramNew = new FuncParam(sKey);
+                            paramNew.Value = parserResult.ObjectQuery[sKey];
+                            SetParamType(parserResult.ObjectQuery[sKey], paramNew);
+                            //添加到集合
+                            listParam.Add(paramNew);
+                        }
+                    }
+                    else
+                    {
+                        throw new Exception(parserResult.Message);
+                    }
+                    break;
+                case SqlStringType.ConfigPathParamed:
+                    sSql = SqlConfig.GetGlobalConfigInfo(sNotParamSql);
+                    foreach (string sKey in sConditionsKeyValue.Keys)
+                    {
+                        //新参数
+                        var paramNew = new FuncParam(sKey);
+                        paramNew.Value = sConditionsKeyValue[sKey];
+                        SetParamType(sConditionsKeyValue[sKey], paramNew);
+                        //添加到集合
+                        listParam.Add(paramNew);
+                    }
+                    break;
+                default:
+                    throw new NotImplementedException();
+            }
 
-        #region 存储过程调用
+            return QueryPageHadParamSqlData(sSql, pParam, listParam, TotalString, conn, dbTran);
+        }
+
+        /// <summary>
+        /// 执行非查询
+        /// </summary>
+        /// <param name="sNotParamSql">SQL语句或SQL语句配置路径</param>
+        /// <param name="sConditionsKeyValue">条件字典</param>
+        /// <param name="sqlStringType">SQL字符枚举</param>
+        /// <param name="conn">数据库连接</param>
+        /// <param name="dbTran">事务</param>
+        /// <returns></returns>
+        /// <exception cref="NotImplementedException"></exception>
+        public int ExecuteNonQuery(string sNotParamSql, IDictionary<string, object> sConditionsKeyValue = null, SqlStringType sqlStringType = SqlStringType.SqlNoParamed, DbConnection conn = null, DbTransaction dbTran = null)
+        {
+            string sSql = "";
+            List<FuncParam> listParam = new List<FuncParam>();
+            switch (sqlStringType)
+            {
+                case SqlStringType.SqlNoParamed:
+                    return ExecuteNonQueryAutoParamSql(sNotParamSql, sConditionsKeyValue, null, null);
+                case SqlStringType.SqlParamed:
+                    foreach (string item in sConditionsKeyValue.Keys)
+                    {
+                        //新参数
+                        var paramNew = new FuncParam(item);
+
+                        paramNew.Value = sConditionsKeyValue[item];
+                        SetParamType(sConditionsKeyValue[item], paramNew);
+                        //添加到集合
+                        listParam.Add(paramNew);
+                    }
+                    return ExecuteNonQueryHadParamSql(sNotParamSql, listParam, null, null);
+                case SqlStringType.ConfigPathNoParamed:
+                    // 配置文件的sql语句
+                    sSql = SqlConfig.GetGlobalConfigInfo(sNotParamSql);
+                    //调用上面的方法查询
+                    return ExecuteNonQueryAutoParamSql(sSql, sConditionsKeyValue, conn, dbTran);
+                case SqlStringType.ConfigPathParamed:
+                    // 配置文件的sql语句
+                    sSql = SqlConfig.GetGlobalConfigInfo(sNotParamSql);
+
+                    foreach (string item in sConditionsKeyValue.Keys)
+                    {
+                        //新参数
+                        var paramNew = new FuncParam(item);
+
+                        paramNew.Value = sConditionsKeyValue[item];
+                        SetParamType(sConditionsKeyValue[item], paramNew);
+                        //添加到集合
+                        listParam.Add(paramNew);
+                    }
+                    return ExecuteNonQueryHadParamSql(sSql, listParam, conn, dbTran);
+                default:
+                    throw new NotImplementedException();
+            }
+        }
+
         /// <summary>
         /// 存储过程调用(支持游标返回)
         /// 标准格式是: 存储过程名-参数定义-[FILL | EXECUTENONQUERY]
-        ///   其中参数定义（多个参数以逗号隔开）为：参数编码:INPUT或OUTPUT：类型：长度（对文本为必填）
+        ///   其中参数定义（多个参数以逗号隔开）格式为：参数编码:INPUT或OUTPUT：类型：长度（对文本为必填）
         /// </summary>
         /// <param name="sStoredProcedure">存储过程名及参数</param>
         /// <param name="sParameterArr">对应存储过程调用的参数列表</param>
-        /// <param name="guid">生命周期唯一ID</param>
+        /// <param name="conn">数据库连接</param>
         /// <param name="tran">事务</p    aram>
         /// <returns></returns>
         public object[] CallStoredProcedure(string sProduceName, string[] sParamArr, DbConnection con, DbTransaction tran)
@@ -709,7 +454,531 @@ namespace Breezee.AutoSQLExecutor.Core
                 throw ex;
             }
         }
+        #endregion
 
+
+        #region 查询未参数化的SQL语句
+        /// <summary>
+        /// 查询未参数化的SQL语句
+        /// </summary>
+        /// <param name="sSql">SQL语句</param>
+        /// <param name="sKeyValue">查询条件</param>
+        /// <param name="conn">连接</param>
+        /// 
+        /// <returns>表</returns>
+        public DataTable QueryAutoParamSqlData(string sNotParamSql, List<FuncParam> listParam = null, DbConnection conn = null, DbTransaction dbTran = null)
+        {
+            IDictionary<string, string> sConditionsKeyValue = new Dictionary<string, string>();
+            foreach (FuncParam item in listParam)
+            {
+                sConditionsKeyValue.Add(item.Code, item.Value.ToString());
+            }
+            // 参数化处理
+            ParserResult parserResult = SqlParsers.parse(SqlTypeEnum.SELECT, sNotParamSql, sConditionsKeyValue.ToObjectDict());
+            if (parserResult.Code.equals("0"))
+            {
+                return QueryHadParamSqlData(parserResult.Sql, listParam, conn, dbTran);
+            }
+            throw new Exception(parserResult.Message);
+        }
+
+        public DataTable QueryAutoParamSqlData(string sNotParamSql, IDictionary<string, object> sConditionsKeyValue, DbConnection conn = null, DbTransaction dbTran = null)
+        {
+            // 参数化处理
+            ParserResult parserResult = SqlParsers.parse(SqlTypeEnum.SELECT, sNotParamSql, sConditionsKeyValue);
+            if (parserResult.Code.equals("0"))
+            {
+                var listParam = new List<FuncParam>();
+                foreach (SqlKeyValueEntity item in parserResult.entityQuery.Values)
+                {
+                    //新参数
+                    var paramNew = new FuncParam(item.KeyName);
+                    paramNew.Value = item.KeyValue;
+                    SetParamType(item.KeyValue, paramNew);
+                    //添加到集合
+                    listParam.Add(paramNew);
+                }
+
+                return QueryHadParamSqlData(parserResult.Sql, listParam, conn, dbTran);
+            }
+            throw new Exception(parserResult.Message);
+        }
+
+        /// <summary>
+        /// 查询未参数化的SQL语句
+        /// </summary>
+        /// <param name="sNotParamSql">SQL语句</param>
+        /// <param name="sConditionsKeyValue">查询条件</param>
+        /// <param name="dicParamType">特殊参数类型</param>
+        /// <param name="conn">连接</param>
+        /// <param name="dbTran">事务</param>
+        /// <returns>表</returns>
+        public DataTable QueryAutoParamSqlData(string sNotParamSql, IDictionary<string, string> sConditionsKeyValue, IDictionary<string, SqlParamType> dicParamType = null, DbConnection conn = null, DbTransaction dbTran = null)
+        {
+            // 参数化处理
+            ParserResult parserResult = SqlParsers.parse(SqlTypeEnum.SELECT, sNotParamSql, sConditionsKeyValue.ToObjectDict());
+            if (parserResult.Code.equals("0"))
+            {
+                var listParam = new List<FuncParam>();
+                foreach (SqlKeyValueEntity item in parserResult.entityQuery.Values)
+                {
+                    //新参数
+                    var paramNew = new FuncParam(item.KeyName);
+                    paramNew.Value = item.KeyValue;
+                    //设置参数类型
+                    SetParamType(item.KeyValue, paramNew);
+                    //添加到集合
+                    listParam.Add(paramNew);
+                }
+
+                return QueryHadParamSqlData(parserResult.Sql, listParam, conn, dbTran);
+            }
+            throw new Exception(parserResult.Message);
+        }
+        #endregion
+
+        #region 查询已参数化的SQL语句
+        public DataTable QueryHadParamSqlData(string sHadParaSql, IDictionary<string, object> sParamKeyValue = null, DbConnection conn = null, DbTransaction dbTran = null)
+        {
+            var listParam = new List<FuncParam>();
+            foreach (string sKey in sParamKeyValue.Keys)
+            {
+                //新参数
+                var paramNew = new FuncParam(sKey);
+
+                paramNew.Value = sParamKeyValue[sKey];
+                //设置参数类型
+                SetParamType(sParamKeyValue[sKey], paramNew);
+                //添加到集合
+                listParam.Add(paramNew);
+            }
+
+            return QueryHadParamSqlData(sHadParaSql, listParam, conn, dbTran);
+        }
+
+        /// <summary>
+        /// 查询已参数化的SQL语句
+        /// </summary>
+        /// <param name="sHadParaSql">SQL语句</param>
+        /// <param name="sParamKeyValue">参数值字典</param>
+        /// <param name="conn">连接</param>
+        /// <returns>表</returns>
+        public DataTable QueryHadParamSqlData(string sHadParaSql, IDictionary<string, string> sParamKeyValue = null, IDictionary<string, SqlParamType> dicParamType = null, DbConnection conn = null, DbTransaction dbTran = null)
+        {
+            var listParam = new List<FuncParam>();
+            foreach (string item in sParamKeyValue.Keys)
+            {
+                //新参数
+                var paramNew = new FuncParam(item);
+
+                paramNew.Value = sParamKeyValue[item];
+                if (dicParamType != null && dicParamType.ContainsKey(item))
+                {
+                    if (dicParamType[item] == SqlParamType.DateTime)
+                    {
+                        paramNew.FuncParamType = FuncParamType.DateTime;
+                    }
+                }
+                //添加到集合
+                listParam.Add(paramNew);
+            }
+
+            return QueryHadParamSqlData(sHadParaSql, listParam, conn, dbTran);
+        }
+
+        /// <summary>
+        /// 【抽象方法】查询已参数化的SQL语句
+        /// </summary>
+        /// <param name="sParaSql">已经参数化的SQL</param>
+        /// <param name="sKeyValue">查询条件键值</param>
+        /// <param name="conn">数据库连接</param>
+        /// <returns></returns>
+        public abstract DataTable QueryHadParamSqlData(string sHadParaSql, List<FuncParam> listParam = null, DbConnection conn = null, DbTransaction dbTran = null);
+
+        #endregion
+
+        #region 根据配置文件读取SQL查询
+        public DataTable QueryAutoParamConfigPathData(string sXPath, IDictionary<string, object> sKeyValue, DbConnection conn = null, DbTransaction dbTran = null)
+        {
+            string sSql = string.Empty;
+            try
+            {
+                // 配置文件的sql语句
+                sSql = SqlConfig.GetGlobalConfigInfo(sXPath);
+                //调用上面的方法查询
+                DataTable dt = QueryAutoParamSqlData(sSql, sKeyValue, conn, dbTran);
+                dt.TableName = sXPath;
+                return dt;
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        /// <summary>
+        /// 根据配置文件读取SQL查询
+        /// </summary>
+        /// <param name="con">数据库连接</param>
+        /// <param name="sXPath">配置文件路径</param>
+        /// <param name="sKeyValue">查询条件键值</param>
+        /// <returns></returns>
+        public DataTable QueryAutoParamConfigPathData(string sXPath, IDictionary<string, string> sKeyValue, IDictionary<string, SqlParamType> dicParamType = null, DbConnection conn = null, DbTransaction dbTran = null)
+        {
+            string sSql = string.Empty;
+            try
+            {
+                // 配置文件的sql语句
+                sSql = SqlConfig.GetGlobalConfigInfo(sXPath);
+                //调用上面的方法查询
+                DataTable dt = QueryAutoParamSqlData(sSql, sKeyValue, dicParamType, conn, dbTran);
+                dt.TableName = sXPath;
+                return dt;
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        /// <summary>
+        /// 根据配置文件读取SQL查询
+        /// </summary>
+        /// <param name="con">数据库连接</param>
+        /// <param name="sXPath">配置文件路径</param>
+        /// <param name="sKeyValue">查询条件键值</param>
+        /// <returns></returns>
+        public DataTable QueryAutoParamConfigPathData(string sXPath, List<FuncParam> listParam = null, DbConnection conn = null, DbTransaction dbTran = null)
+        {
+            string sSql = string.Empty;
+            try
+            {
+                // 配置文件的sql语句
+                sSql = SqlConfig.GetGlobalConfigInfo(sXPath);
+                //调用上面的方法查询
+                DataTable dt = QueryAutoParamSqlData(sSql, listParam, conn, dbTran);
+                dt.TableName = sXPath;
+                return dt;
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        public DataTable QueryHadParamConfigPathData(string sXPath, IDictionary<string, object> sParamKeyValue = null, DbConnection conn = null, DbTransaction dbTran = null)
+        {
+            try
+            {
+                // 配置文件的sql语句
+                string sHadParamSql = SqlConfig.GetGlobalConfigInfo(sXPath);
+
+                return QueryHadParamSqlData(sHadParamSql, sParamKeyValue, conn, dbTran);
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+
+        /// <summary>
+        /// 根据配置文件读取已参数化SQL查询
+        /// </summary>
+        /// <param name="sHadParaSql">SQL语句</param>
+        /// <param name="sParamKeyValue">参数值字典</param>
+        /// <param name="conn">连接</param>
+        /// <returns>表</returns>
+        public DataTable QueryHadParamConfigPathData(string sXPath, IDictionary<string, string> sParamKeyValue = null, IDictionary<string, SqlParamType> dicParamType = null, DbConnection conn = null, DbTransaction dbTran = null)
+        {
+            try
+            {
+                // 配置文件的sql语句
+                string sHadParamSql = SqlConfig.GetGlobalConfigInfo(sXPath);
+
+                return QueryHadParamSqlData(sHadParamSql, sParamKeyValue, dicParamType, conn, dbTran);
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+        #endregion
+
+        #region 查询已参数化的分页SQL语句
+        /// <summary>
+        /// 查询已参数化的分页SQL语句
+        /// </summary>
+        /// <param name="sHadParaSql">SQL语句</param>
+        /// <param name="sParamKeyValue">参数值字典</param>
+        /// <param name="conn">连接</param>
+        /// <returns>表</returns>
+        public IDictionary<string, object> QueryPageHadParamSqlData(string sHadParaSql, PageParam pParam, List<FuncParam> listParam = null, string TotalString = null, DbConnection conn = null, DbTransaction dbTran = null)
+        {
+            try
+            {
+                if (pParam == null || string.IsNullOrEmpty(pParam.PageOrderString))
+                {
+                    throw new Exception("PageParam和其排序字段不能为空！");
+                }
+
+                int pageSize = pParam.PageSize;
+                int pageNo = pParam.PageNO;
+                IDictionary<string, object> dicRes = new Dictionary<string, object>();
+                bool IsCalOtherTotal = false; //是否计算其他统计项
+                if (!string.IsNullOrEmpty(TotalString))
+                {
+                    IsCalOtherTotal = true;
+                }
+                //1.查询总记录数
+                string pageCountSql = "SELECT COUNT(1) FROM (" + sHadParaSql + ") RALL";
+                string[] parms = null;
+                if (IsCalOtherTotal)
+                {
+                    parms = TotalString.Split(new string[] { "," }, StringSplitOptions.None);
+                    pageCountSql = "SELECT COUNT(1)," + TotalString + " FROM (" + sHadParaSql + ") RALL";
+                }
+                //查询
+                DataTable dt = QueryHadParamSqlData(pageCountSql, listParam, conn, dbTran);
+
+                int totalRowCount = dt.Rows.Count > 0 ? int.Parse(dt.Rows[0][0].ToString()) : 0;
+
+                if (IsCalOtherTotal)
+                {
+                    for (int i = 0; i < parms.Length; i++)
+                    {
+                        dicRes[parms[i]] = dt.Rows.Count > 0 ? dt.Rows[0][i + 1].ToString() : "0";
+                    }
+                }
+
+                //2.查询分页数据
+                int pageCount = 0;
+                // 计算总页数
+                if (totalRowCount % pageSize == 0)// 整除
+                {
+                    pageCount = totalRowCount / pageSize;
+                }
+                else // 不整除，总页数加1
+                {
+                    pageCount = totalRowCount / pageSize + 1;
+                }
+                int beginRow = (pageNo - 1) * pageSize + 1;
+                int endRow = pageNo * pageSize;
+
+                //获取公页后的SQL
+                string pageDataSql = GetPageSql(sHadParaSql, pParam, beginRow, endRow);
+
+                DataTable dtData = QueryHadParamSqlData(pageDataSql, listParam, conn, dbTran);
+
+                //3.返回分页结果                
+                dicRes[StaticConstant.TOTAL_COUNT] = totalRowCount; //总记录数
+                dicRes[StaticConstant.PAGE_SIZE] = pageCount; //总页数
+                dicRes[StaticConstant.FRA_QUERY_RESULT] = dtData;
+
+                dicRes[StaticConstant.FRA_RETURN_FLAG] = "1";
+                dicRes[StaticConstant.FRA_USER_MSG] = "查询成功！";
+                return dicRes;
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+        
+        /// <summary>
+        /// 获取分页SQL
+        /// </summary>
+        /// <param name="sHadParaSql"></param>
+        /// <returns></returns>
+        public abstract string GetPageSql(string sHadParaSql, PageParam pParam, int beginRow, int endRow);
+        #endregion       
+
+        #region 执行非查询类SQL（只返回影响记录条数）
+        /// <summary>
+        /// 【抽象方法】执行已参数化的SQL语句
+        /// </summary>
+        /// <param name="strSql">要执行的SQL</param>
+        /// <returns>返回影响记录条数</returns>
+        public abstract int ExecuteNonQueryHadParamSql(string sHadParaSql, List<FuncParam> listParam = null, DbConnection conn = null, DbTransaction dbTran = null);
+
+        /// <summary>
+        /// 执行已参数化的SQL语句
+        /// 为兼容旧的方法使用
+        /// </summary>
+        /// <param name="sHadParaSql"></param>
+        /// <param name="dicParam"></param>
+        /// <param name="conn"></param>
+        /// <param name="tran"></param>
+        /// <param name="keys">参数清单</param>
+        /// <returns></returns>
+        public int ExecuteNonQueryHadParamSql(string sHadParaSql, IDictionary<string, string> dicParam, DbConnection conn, DbTransaction tran, params string[] keys)
+        {
+            IDictionary<string, string> dicParamReal = new Dictionary<string, string>();
+            if (dicParam != null && dicParam.Keys.Count > 0)
+            {
+                IEnumerable<string> lstKeys = null;
+                string strNoExistsKey = "";
+                if (keys == null || keys.Count() == 0)
+                {
+                    lstKeys = dicParam.Keys.Where(x => x != StaticConstant.UNIQUE_FLAG);
+                }
+                else
+                {
+                    lstKeys = keys;
+                }
+
+                foreach (string key in lstKeys)
+                {
+                    //增加键不存在时，一次抛出提示，以方便修改 hgh2014-10-29
+                    if (!dicParam.ContainsKey(key))
+                    {
+                        strNoExistsKey = strNoExistsKey + key + ",";
+                        continue;
+                    }
+                    //有效的参数
+                    dicParamReal[key] = dicParam[key];
+                }
+                if (!string.IsNullOrEmpty(strNoExistsKey))
+                {
+                    throw new ArgumentNullException("以下键未传入：" + strNoExistsKey.Substring(0, strNoExistsKey.Length - 1));
+                }
+            }
+            //调用执行参数化方法
+            return ExecuteNonQueryHadParamSql(sHadParaSql, dicParamReal, null, conn, tran);
+        }
+
+        /// <summary>
+        /// 执行已参数化的SQL语句
+        /// </summary>
+        /// <param name="sHadParaSql">SQL语句</param>
+        /// <param name="sParamKeyValue">参数值字典</param>
+        /// <param name="conn">连接</param>
+        /// <returns>表</returns>
+        public int ExecuteNonQueryHadParamSql(string sHadParaSql, IDictionary<string, string> sParamKeyValue = null, IDictionary<string, SqlParamType> dicParamType = null, DbConnection conn = null, DbTransaction dbTran = null)
+        {
+            var listParam = new List<FuncParam>();
+            foreach (string item in sParamKeyValue.Keys)
+            {
+                //新参数
+                var paramNew = new FuncParam(item);
+
+                paramNew.Value = sParamKeyValue[item];
+                if (dicParamType != null && dicParamType.ContainsKey(item))
+                {
+                    if (dicParamType[item] == SqlParamType.DateTime)
+                    {
+                        paramNew.FuncParamType = FuncParamType.DateTime;
+                    }
+                }
+                //添加到集合
+                listParam.Add(paramNew);
+            }
+
+            return ExecuteNonQueryHadParamSql(sHadParaSql, listParam, conn, dbTran);
+        }
+
+        public int ExecuteNonQueryAutoParamSql(string sNotParamSql, IDictionary<string, object> dicQuery = null,  DbConnection conn = null, DbTransaction dbTran = null)
+        {
+            if (dicQuery == null)
+            {
+                dicQuery = new Dictionary<string, object>();
+            }
+            // 参数化处理
+            ParserResult parserResult = SqlParsers.parse(SqlTypeEnum.SELECT, sNotParamSql, dicQuery);
+            if (parserResult.Code.equals("0"))
+            {
+                var listParam = new List<FuncParam>();
+                foreach (SqlKeyValueEntity item in parserResult.entityQuery.Values)
+                {
+                    //新参数
+                    var paramNew = new FuncParam(item.KeyName);
+
+                    paramNew.Value = item.KeyValue;
+                    SetParamType(item.KeyValue, paramNew);
+                    //添加到集合
+                    listParam.Add(paramNew);
+                }
+                return ExecuteNonQueryHadParamSql(sNotParamSql, listParam, conn, dbTran);
+            }
+            throw new Exception(parserResult.Message);
+        }
+
+        /// <summary>
+        /// 执行未参数化的SQL语句
+        /// </summary>
+        /// <param name="strSql">要执行的SQL</param>
+        /// <returns>返回影响记录条数</returns>
+        public int ExecuteNonQueryAutoParamSql(string sNotParamSql, IDictionary<string, string> dicQuery = null, IDictionary<string, SqlParamType> dicParamType = null, DbConnection conn = null, DbTransaction dbTran = null)
+        {
+            if (dicQuery == null)
+            {
+                dicQuery = new Dictionary<string, string>();
+            }
+            // 参数化处理
+            ParserResult parserResult = SqlParsers.parse(SqlTypeEnum.SELECT, sNotParamSql, dicQuery.ToObjectDict());
+            if (parserResult.Code.equals("0"))
+            {
+                var listParam = new List<FuncParam>();
+                foreach (SqlKeyValueEntity item in parserResult.entityQuery.Values)
+                {
+                    //新参数
+                    var paramNew = new FuncParam(item.KeyName);
+
+                    paramNew.Value = item.KeyValue;
+                    if (dicParamType != null && dicParamType.ContainsKey(item.KeyName))
+                    {
+                        if (dicParamType[item.KeyName] == SqlParamType.DateTime)
+                        {
+                            paramNew.FuncParamType = FuncParamType.DateTime;
+                        }
+                    }
+                    //添加到集合
+                    listParam.Add(paramNew);
+                }
+                return ExecuteNonQueryHadParamSql(sNotParamSql, listParam, conn, dbTran);
+            }
+            throw new Exception(parserResult.Message);
+        }
+
+        /// <summary>
+        /// 执行未参数化的SQL语句【XML配置路径】
+        /// </summary>
+        /// <param name="strSql">要执行的SQL</param>
+        /// <returns>返回影响记录条数</returns>
+        public int ExecuteNonQueryConfigPath(string sXPath, IDictionary<string, string> dicQuery = null, IDictionary<string, SqlParamType> dicParamType = null, DbConnection conn = null, DbTransaction dbTran = null)
+        {
+            string sSql = string.Empty;
+            try
+            {
+                // 配置文件的sql语句
+                sSql = SqlConfig.GetGlobalConfigInfo(sXPath);
+                //调用上面的方法查询
+                return ExecuteNonQueryAutoParamSql(sSql, dicQuery, dicParamType,conn, dbTran);
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        /// <summary>
+        /// 执行已参数化的SQL语句【XML配置路径】
+        /// </summary>
+        /// <param name="sXPath"></param>
+        /// <param name="sParamKeyValue"></param>
+        /// <param name="dicParamType"></param>
+        /// <param name="conn"></param>
+        /// <param name="dbTran"></param>
+        /// <returns></returns>
+        public int ExecuteNonQueryHadParamConfigPath(string sXPath, IDictionary<string, string> sParamKeyValue = null, IDictionary<string, SqlParamType> dicParamType = null, DbConnection conn = null, DbTransaction dbTran = null)
+        {
+            // 配置文件的sql语句
+            string sHadParamSql = SqlConfig.GetGlobalConfigInfo(sXPath);
+            return ExecuteNonQueryHadParamSql(sHadParamSql, sParamKeyValue, dicParamType,conn, dbTran);
+        }
+        #endregion
+
+        #region 存储过程调用
         /// <summary>
         /// 【抽象方法】增加参数
         /// </summary>
@@ -958,7 +1227,7 @@ namespace Breezee.AutoSQLExecutor.Core
             //删除记录
             string strSql = "DELETE FROM " + strTableName.DBTableName + " WHERE 1=1 " + sbCondition.ToString();
             //执行已参数化的非查询
-            ExecuteNonQueryHadParam(strSql, dicSave, null, conn, DbTran);
+            ExecuteNonQueryHadParamSql(strSql, dicSave, null, conn, DbTran);
             return true;
         }
         #endregion 
@@ -1023,6 +1292,21 @@ namespace Breezee.AutoSQLExecutor.Core
         public abstract DataTable GetSqlSchemaTableColumns(string sTableName);
         #endregion
 
+        private static void SetParamType(object item, FuncParam paramNew)
+        {
+            if (item is DateTime)
+            {
+                paramNew.FuncParamType = FuncParamType.DateTime;
+            }
+            else if (item is int)
+            {
+                paramNew.FuncParamType = FuncParamType.Int;
+            }
+            else if (item is string)
+            {
+                paramNew.FuncParamType = FuncParamType.String;
+            }
+        }
     }
 
 

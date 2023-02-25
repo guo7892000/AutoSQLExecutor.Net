@@ -1,8 +1,6 @@
-﻿using org.breezee.MyPeachNet;
-using System;
-using System.Collections.Generic;
+﻿using Breezee.Core.Interface;
+using org.breezee.MyPeachNet;
 using System.Data;
-using System.Linq;
 using System.Text;
 
 namespace Breezee.AutoSQLExecutor.Core
@@ -45,7 +43,7 @@ namespace Breezee.AutoSQLExecutor.Core
         public BaseSqlBuilder()
         {
             //DataAccess = ContainerContext.Container.Resolve<IDataAccess>(CFGDataBase.DefaultDbName);//未实现？？？
-            UseDataBaseType = DataAccess.UseDataBaseType;
+            UseDataBaseType = DataAccess.DataBaseType;
 
             ListSqlSegment = new List<SqlSegment>();
         }
@@ -56,7 +54,7 @@ namespace Breezee.AutoSQLExecutor.Core
         public BaseSqlBuilder(IDataAccess iDataAccess)
         {
             DataAccess = iDataAccess;
-            UseDataBaseType = iDataAccess.UseDataBaseType;
+            UseDataBaseType = iDataAccess.DataBaseType;
 
             ListSqlSegment = new List<SqlSegment>();
         }
@@ -81,11 +79,11 @@ namespace Breezee.AutoSQLExecutor.Core
         /// <param name="sqlClause">sql子句</param>
         /// <param name="percentSignStyle">百分号显示方式，默认为Both</param>
         /// <returns>返回SqlQueryParser的实例</returns>
-        public BaseSqlBuilder GetSqlByConfigPath(string sXPath, List<BaseFuncParam> listParam = null)
+        public BaseSqlBuilder GetSqlByConfigPath(string sXPath, List<FuncParam> listParam = null)
         {
             string sNotParamSql = SqlConfig.GetGlobalConfigInfo(sXPath);
             IDictionary<string, string> sConditionsKeyValue = new Dictionary<string, string>();
-            foreach (BaseFuncParam item in listParam)
+            foreach (FuncParam item in listParam)
             {
                 sConditionsKeyValue.Add(item.Code, item.Value.ToString());
             }
@@ -313,7 +311,7 @@ namespace Breezee.AutoSQLExecutor.Core
         /// <param name="sXPath">配置文件路径</param>
         /// <param name="sKeyValue">查询条件键值</param>
         /// <returns></returns>
-        public void GetSqlParam(List<BaseFuncParam> listParam, out string sSql,out List<BaseFuncParam> realParam)
+        public void GetSqlParam(List<FuncParam> listParam, out string sSql,out List<FuncParam> realParam)
         {
             try
             {
@@ -343,7 +341,7 @@ namespace Breezee.AutoSQLExecutor.Core
         /// <param name="dicParam"></param>
         /// <param name="sSql"></param>
         /// <param name="realParam"></param>
-        public void GetSqlParam(IDictionary<string, string> dicParam, out string sSql, out List<BaseFuncParam> realParam)
+        public void GetSqlParam(IDictionary<string, string> dicParam, out string sSql, out List<FuncParam> realParam)
         {
             try
             {
@@ -355,20 +353,20 @@ namespace Breezee.AutoSQLExecutor.Core
                     segment.Parse(UseDataBaseType,dicParam, builder, lstParam, false);
                 }
 
-                realParam = new List<BaseFuncParam>();
+                realParam = new List<FuncParam>();
                 foreach (var sp in lstParam.Values)
                 {
                     if (sp.DataType == DbType.DateTime)
                     {
-                        realParam.Add(new BaseFuncParam(sp.Name, FuncParamType.DateTime, FuncParamInputType.Option, sp.Value));
+                        realParam.Add(new FuncParam(sp.Name, FuncParamType.DateTime, FuncParamInputType.Option, sp.Value));
                     }
                     else if (sp.DataType == DbType.Date)
                     {
-                        realParam.Add(new BaseFuncParam(sp.Name, FuncParamType.DateTime, FuncParamInputType.Option, sp.Value));
+                        realParam.Add(new FuncParam(sp.Name, FuncParamType.DateTime, FuncParamInputType.Option, sp.Value));
                     }
                     else
                     {
-                        realParam.Add(new BaseFuncParam(sp.Name, FuncParamType.String, FuncParamInputType.Option, sp.Value));
+                        realParam.Add(new FuncParam(sp.Name, FuncParamType.String, FuncParamInputType.Option, sp.Value));
                     }
                 }
 

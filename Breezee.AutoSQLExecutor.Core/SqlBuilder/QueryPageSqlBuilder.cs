@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Breezee.Core.Interface;
+using System;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Linq;
@@ -46,12 +47,12 @@ namespace Breezee.AutoSQLExecutor.Core
         /// <param name="sXPath">配置文件路径</param>
         /// <param name="sKeyValue">查询条件键值</param>
         /// <returns></returns>
-        public IDictionary<string, object> QueryPage(PageParam pParam, List<BaseFuncParam> listParam = null, string TotalString = null, DbConnection conn = null, DbTransaction dbTran = null)
+        public IDictionary<string, object> QueryPage(PageParam pParam, List<FuncParam> listParam = null, string TotalString = null, DbConnection conn = null, DbTransaction dbTran = null)
         {
             try
             {
                 string sSql;
-                List<BaseFuncParam> realParam;
+                List<FuncParam> realParam;
                 GetSqlParam(listParam, out sSql, out realParam);
                 //调用接口方法
                 return DataAccess.QueryPageHadParamSqlData(sSql, pParam, realParam, TotalString, conn, dbTran);
@@ -76,7 +77,7 @@ namespace Breezee.AutoSQLExecutor.Core
             try
             {
                 string sSql;
-                List<BaseFuncParam> realParam;
+                List<FuncParam> realParam;
                 GetSqlParam(dicQuery, out sSql, out realParam);
                 //调用接口方法
                 return DataAccess.QueryPageHadParamSqlData(sSql, pParam, realParam, TotalString, conn, dbTran);

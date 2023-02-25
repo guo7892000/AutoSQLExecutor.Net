@@ -8,6 +8,7 @@ using System.Collections;
 using System.Data.Common;
 using System.Xml;
 using Breezee.AutoSQLExecutor.Core;
+using Breezee.Core.Interface;
 
 namespace Breezee.AutoSQLExecutor.Oracle
 {
@@ -18,7 +19,7 @@ namespace Breezee.AutoSQLExecutor.Oracle
     public class BOracleDataAccess : IDataAccess
     {
         #region 属性
-        public override DataBaseType UseDataBaseType
+        public override DataBaseType DataBaseType
         {
             get { return DataBaseType.Oracle; }
         }
@@ -73,12 +74,12 @@ namespace Breezee.AutoSQLExecutor.Oracle
         {
             /*注：请保证可执行文件生成的全路径不要包括“括号”，否则会报“ORA - 12154: TNS: 无法解析指定的连接标识符”错误！
 				    连接字符串示例：Data Source = HUI; User ID = test01; Password = test01;*/
-            _ConnectionString = string.Format("Data Source={0};User ID={1};Password={2};", server.ServerName, server.UserName, server.Password);
+            _ConnectionString = server.UseConnString ? server.ConnString : string.Format("Data Source={0};User ID={1};Password={2};", server.ServerName, server.UserName, server.Password);
         }
         #endregion
 
         #region 实现字典转换为DB服务器方法
-        protected override DbServerInfo Dict2DbServer(Dictionary<string, string> dic)
+        protected override DbServerInfo Dic2DbServer(Dictionary<string, string> dic)
         {
             DbServerInfo server = new DbServerInfo();
             server.DatabaseType = DataBaseType.Oracle;
@@ -114,7 +115,7 @@ namespace Breezee.AutoSQLExecutor.Oracle
         /// <param name="sParamKeyValue">参数值字典</param>
         /// <param name="conn">连接</param>
         /// <returns>表</returns>
-        public override DataTable QueryHadParamSqlData(string sHadParaSql, List<BaseFuncParam> listParam = null, DbConnection conn = null, DbTransaction dbTran = null)
+        public override DataTable QueryHadParamSqlData(string sHadParaSql, List<FuncParam> listParam = null, DbConnection conn = null, DbTransaction dbTran = null)
         {
             try
             {
@@ -142,7 +143,7 @@ namespace Breezee.AutoSQLExecutor.Oracle
 
                 if (listParam != null)
                 {
-                    foreach (BaseFuncParam item in listParam)
+                    foreach (FuncParam item in listParam)
                     {
                         OracleParameter sp = new OracleParameter(item.Code, item.Value);
                         if (item.FuncParamType == FuncParamType.DateTime)
@@ -181,7 +182,7 @@ namespace Breezee.AutoSQLExecutor.Oracle
         /// </summary>
         /// <param name="strSql">要执行的SQL</param>
         /// <returns>返回影响记录条数</returns>
-        public override int ExecuteNonQueryHadParam(string sHadParaSql, List<BaseFuncParam> listParam = null, DbConnection conn = null, DbTransaction dbTran = null)
+        public override int ExecuteNonQueryHadParamSql(string sHadParaSql, List<FuncParam> listParam = null, DbConnection conn = null, DbTransaction dbTran = null)
         {
             //数据库连接是否为空
             if (conn == null)
@@ -204,7 +205,7 @@ namespace Breezee.AutoSQLExecutor.Oracle
 
             if (listParam != null)
             {
-                foreach (BaseFuncParam item in listParam)
+                foreach (FuncParam item in listParam)
                 {
                     OracleParameter sp = new OracleParameter(item.Code, item.Value);
                     if (item.FuncParamType == FuncParamType.DateTime)
@@ -650,7 +651,7 @@ namespace Breezee.AutoSQLExecutor.Oracle
                 ";
                 IDictionary<string, string> dic = new Dictionary<string, string>();
                 dic["TABLE_NAME"] = sTableName;
-                DataTable dtPK = QueryAutoParamData(sSql, dic);
+                DataTable dtPK = QueryAutoParamSqlData(sSql, dic);
                 bool isPKOK = false;
 
                 DataTable dtSource = con.GetSchema(DBSchemaString.Columns, new string[] { null, sTableName,null  });//使用通用的获取架构方法
@@ -715,7 +716,7 @@ namespace Breezee.AutoSQLExecutor.Oracle
                 dic["TABLE_NAME"] = sTableName.ToUpper();
             }
 
-            DataTable dtSource = QueryAutoParamData(sSql, dic);
+            DataTable dtSource = QueryAutoParamSqlData(sSql, dic);
             DataTable dtReturn = DT_SchemaTable;
             foreach (DataRow drS in dtSource.Rows)
             {
@@ -763,7 +764,7 @@ namespace Breezee.AutoSQLExecutor.Oracle
 
             IDictionary<string, string> dic = new Dictionary<string, string>();
             dic["TABLE_NAME"] = sTableName;
-            DataTable dtSource = QueryAutoParamData(sSql, dic);
+            DataTable dtSource = QueryAutoParamSqlData(sSql, dic);
             DataTable dtReturn = DT_SchemaTableColumn;
             foreach (DataRow drS in dtSource.Rows)
             {

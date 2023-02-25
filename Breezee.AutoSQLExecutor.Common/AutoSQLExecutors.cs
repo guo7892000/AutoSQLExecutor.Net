@@ -4,6 +4,7 @@ using Breezee.AutoSQLExecutor.Oracle;
 using Breezee.AutoSQLExecutor.PostgreSQL;
 using Breezee.AutoSQLExecutor.SQLite;
 using Breezee.AutoSQLExecutor.SqlServer;
+using Breezee.Core.Interface;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -26,7 +27,7 @@ namespace Breezee.AutoSQLExecutor.Common
     /// <summary>
     /// SQL执行器
     /// </summary>
-    public class AutoSQLExecutor
+    public class AutoSQLExecutors
     {
         public static IDataAccess Connect(DbServerInfo server)
         {
