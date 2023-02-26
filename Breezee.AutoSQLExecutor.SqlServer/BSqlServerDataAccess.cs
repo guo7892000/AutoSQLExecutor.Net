@@ -105,8 +105,14 @@ namespace Breezee.AutoSQLExecutor.SqlServer
         /// <param name="server"></param>
         public override void ModifyConnectString(DbServerInfo server)
         {
-            /*data source为数据库实例名，initial catalog为数据库名，user id为用户名，password为密码。连接字符串示例：data source=.;initial catalog=AprilSpring;user id=sa;password=sa */
-            _ConnectionString = server.UseConnString ? server.ConnString : string.Format("data source={0};user id={1};password={2};TrustServerCertificate=yes", server.ServerName, server.UserName, server.Password);
+            /* data source为数据库实例名，initial catalog为数据库名，user id为用户名，password为密码。连接字符串示例：data source=.;initial catalog=AprilSpring;user id=sa;password=sa 
+             * SqlServer好像不需要指定端口，即使后台修改了默认的1433端口，也可以连接成功
+             */
+            _ConnectionString = server.UseConnString ? server.ConnString : string.Format("data source={0};user id={1};password={2}", server.ServerName, server.UserName, server.Password);
+            //if (!string.IsNullOrEmpty(server.PortNo))
+            //{
+            //    _ConnectionString = server.UseConnString ? server.ConnString : string.Format("data source={0};user id={1};password={2}", server.ServerName + "," + server.PortNo, server.UserName, server.Password);
+            //}
             if (!server.UseConnString && !string.IsNullOrEmpty(server.Database))
             {
                 _ConnectionString += string.Format(";Initial Catalog={0}", server.Database);
