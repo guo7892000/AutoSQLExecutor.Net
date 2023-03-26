@@ -1,4 +1,5 @@
 ﻿using Breezee.Core.Interface;
+using System.Collections.Generic;
 using System.Text;
 
 namespace Breezee.AutoSQLExecutor.Core

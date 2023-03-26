@@ -6,6 +6,8 @@ using org.breezee.MyPeachNet;
 using Breezee.Core.Interface;
 using System.IO;
 using System.Collections.Generic;
+using System;
+using System.Linq;
 
 /*********************************************************************
  * 对象名称：数据访问接口
@@ -88,7 +90,7 @@ namespace Breezee.AutoSQLExecutor.Core
         {
             ConnectionString = sConstr;
             DbServer = ConnString2Server(sConstr);
-            SqlParsers = new SqlParsers(new MyPeachNetProperties());
+            SqlParsers = new SqlParsers(new MyPeachNetProperties());          
         }
 
         public IDataAccess(DbServerInfo server)
@@ -1289,7 +1291,7 @@ namespace Breezee.AutoSQLExecutor.Core
         /// </summary>
         /// <param name="tableName"></param>
         /// <returns></returns>
-        public abstract DataTable GetSqlSchemaTableColumns(string sTableName);
+        public abstract DataTable GetSqlSchemaTableColumns(string sTableName, string sSchema = null);
         #endregion
 
         private static void SetParamType(object item, FuncParam paramNew)

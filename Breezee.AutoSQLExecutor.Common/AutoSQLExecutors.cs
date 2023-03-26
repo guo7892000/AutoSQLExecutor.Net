@@ -31,21 +31,29 @@ namespace Breezee.AutoSQLExecutor.Common
     {
         public static IDataAccess Connect(DbServerInfo server)
         {
+            IDataAccess dbAccess = null;
             switch (server.DatabaseType)
             {
                 case DataBaseType.SqlServer:
-                    return new BSqlServerDataAccess(server);
+                    dbAccess =  new BSqlServerDataAccess(server);
+                    break;
                 case DataBaseType.Oracle:
-                    return new BOracleDataAccess(server);
+                    dbAccess = new BOracleDataAccess(server);
+                    break;
                 case DataBaseType.MySql:
-                    return new BMySqlDataAccess(server);
+                    dbAccess = new BMySqlDataAccess(server);
+                    break;
                 case DataBaseType.SQLite:
-                    return new BSQLiteDataAccess(server);
+                    dbAccess = new BSQLiteDataAccess(server);
+                    break;
                 case DataBaseType.PostgreSql:
-                    return new BPostgreSqlDataAccess(server);
+                    dbAccess = new BPostgreSqlDataAccess(server);
+                    break;
                 default:
                     throw new Exception("暂不支持该数据库类型！");
             }
+            return dbAccess;
         }
+        
     }
 }

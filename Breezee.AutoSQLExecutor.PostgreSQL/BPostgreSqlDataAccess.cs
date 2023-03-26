@@ -45,10 +45,11 @@ namespace Breezee.AutoSQLExecutor.PostgreSQL
         public BPostgreSqlDataAccess(string sConstr) : base(sConstr)
         {
             _ConnectionString = sConstr;
+            SqlParsers.properties.ParamPrefix = ":"; //注：PostgreSql是使用冒号作为参数前缀
         }
         public BPostgreSqlDataAccess(DbServerInfo server) : base(server)
         {
-
+            SqlParsers.properties.ParamPrefix = ":"; //注：PostgreSql是使用冒号作为参数前缀
         }
         #endregion
 
@@ -288,26 +289,26 @@ namespace Breezee.AutoSQLExecutor.PostgreSQL
                         * 即例如：@CREATE_TIME 可被 getdate() 替代*/
                     if (dc.ExtendedProperties[StaticConstant.FRA_TABLE_EXTEND_PROPERTY_COLUMNS_FIX_VALUE] != null)
                     {
-                        TableCoulnmDefaultType tcy;
+                        DbDefaultValueType tcy;
                         try
                         {
-                            tcy = (TableCoulnmDefaultType)dc.ExtendedProperties[StaticConstant.FRA_TABLE_EXTEND_PROPERTY_COLUMNS_FIX_VALUE];
+                            tcy = (DbDefaultValueType)dc.ExtendedProperties[StaticConstant.FRA_TABLE_EXTEND_PROPERTY_COLUMNS_FIX_VALUE];
                         }
                         catch (Exception exTans)
                         {
                             throw new Exception("请保证表列的扩展属性“动态固定值”为TableCoulnmDefaultType枚举类型！" + exTans.Message);
                         }
-                        if (tcy == TableCoulnmDefaultType.DateTime)
+                        if (tcy == DbDefaultValueType.DateTime)
                         {
                             strInsertEnd.Append(sDouHao + "now()");
                             strUpdate.Append(sUpdateDouHao + dc.ColumnName + "= now()");
                         }
-                        else if (tcy == TableCoulnmDefaultType.TimeStamp)
+                        else if (tcy == DbDefaultValueType.TimeStamp)
                         {
                             strInsertEnd.Append(sDouHao + "current_timestamp");
                             strUpdate.Append(sUpdateDouHao + dc.ColumnName + "= current_timestamp");
                         }
-                        else if (tcy == TableCoulnmDefaultType.Guid)
+                        else if (tcy == DbDefaultValueType.Guid)
                         {
                             string sGuid = Guid.NewGuid().ToString("N");
                             strInsertEnd.Append(sDouHao + "'"+ sGuid + "'");
@@ -805,9 +806,11 @@ namespace Breezee.AutoSQLExecutor.PostgreSQL
             return dtReturn;
         }
 
-        public override DataTable GetSqlSchemaTableColumns(string sTableName)
+        public override DataTable GetSqlSchemaTableColumns(string sTableName, string sSchema = null)
         {
-            string sSql = @"SELECT A.ORDINAL_POSITION,
+            string sSql = @"SELECT A.TABLE_NAME,
+				A.TABLE_SCHEMA,
+				A.ORDINAL_POSITION,
 	            A.COLUMN_NAME,
 	            A.DATA_TYPE,
 	            A.CHARACTER_MAXIMUM_LENGTH,
@@ -838,12 +841,12 @@ namespace Breezee.AutoSQLExecutor.PostgreSQL
              ) B ON A.TABLE_NAME = B.relname AND A.COLUMN_NAME = B.attname
             WHERE 1=1 
             AND upper(A.TABLE_SCHEMA)='PUBLIC' 
-            AND upper(A.TABLE_NAME)= '#TABLE_NAME#'
+            AND A.TABLE_NAME = '#TABLE_NAME#'
             ORDER BY A.ORDINAL_POSITION ASC
             ";
 
             IDictionary<string, string> dic = new Dictionary<string, string>();
-            dic["TABLE_NAME"] = sTableName;
+            dic["TABLE_NAME"] = sTableName;//PpostgreSQl的表都是小写的。但转换SQL的工具MyPeachNet会把所有SQL转换为大写？？？
             DataTable dtSource = QueryAutoParamSqlData(sSql, dic);
             DataTable dtReturn = DT_SchemaTableColumn;
             foreach (DataRow drS in dtSource.Rows)

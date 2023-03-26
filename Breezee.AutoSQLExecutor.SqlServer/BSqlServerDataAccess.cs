@@ -2,13 +2,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using Microsoft.Data.SqlClient;
 using System.Data;
 using System.Collections;
 using System.Data.Common;
 using System.Xml;
 using Breezee.AutoSQLExecutor.Core;
 using Breezee.Core.Interface;
+using Microsoft.Data.SqlClient;
 
 namespace Breezee.AutoSQLExecutor.SqlServer
 {
@@ -46,10 +46,11 @@ namespace Breezee.AutoSQLExecutor.SqlServer
         public BSqlServerDataAccess(string sConstr) : base(sConstr)
         {
             _ConnectionString = sConstr;
+            SqlParsers.properties.ParamPrefix = "@"; //注：SqlServer是使用@作为参数前缀
         }
         public BSqlServerDataAccess(DbServerInfo server) : base(server)
         {
-
+            SqlParsers.properties.ParamPrefix = "@"; //注：SqlServer是使用@作为参数前缀
         }
         #endregion
 
@@ -107,15 +108,16 @@ namespace Breezee.AutoSQLExecutor.SqlServer
         {
             /* data source为数据库实例名，initial catalog为数据库名，user id为用户名，password为密码。连接字符串示例：data source=.;initial catalog=AprilSpring;user id=sa;password=sa 
              * SqlServer好像不需要指定端口，即使后台修改了默认的1433端口，也可以连接成功
+             * 针对【provider：SSL Provider，error：0 - 证书链是由不受信任的颁发机构颁发的】报错，要在连接中加上：Encrypt=True;TrustServerCertificate=True;
              */
-            _ConnectionString = server.UseConnString ? server.ConnString : string.Format("data source={0};user id={1};password={2}", server.ServerName, server.UserName, server.Password);
+            _ConnectionString = server.UseConnString ? server.ConnString : string.Format("data source={0};user id={1};password={2};Encrypt=True;TrustServerCertificate=True;", server.ServerName, server.UserName, server.Password);
             //if (!string.IsNullOrEmpty(server.PortNo))
             //{
             //    _ConnectionString = server.UseConnString ? server.ConnString : string.Format("data source={0};user id={1};password={2}", server.ServerName + "," + server.PortNo, server.UserName, server.Password);
             //}
             if (!server.UseConnString && !string.IsNullOrEmpty(server.Database))
             {
-                _ConnectionString += string.Format(";Initial Catalog={0}", server.Database);
+                _ConnectionString += string.Format("Initial Catalog={0};", server.Database);
             }
             this.DbServer = server;
         }
@@ -293,26 +295,26 @@ namespace Breezee.AutoSQLExecutor.SqlServer
                         * 即例如：@CREATE_TIME 可被 getdate() 替代*/
                     if (dc.ExtendedProperties[StaticConstant.FRA_TABLE_EXTEND_PROPERTY_COLUMNS_FIX_VALUE] != null)
                     {
-                        TableCoulnmDefaultType tcy;
+                        DbDefaultValueType tcy;
                         try
                         {
-                            tcy = (TableCoulnmDefaultType)dc.ExtendedProperties[StaticConstant.FRA_TABLE_EXTEND_PROPERTY_COLUMNS_FIX_VALUE];
+                            tcy = (DbDefaultValueType)dc.ExtendedProperties[StaticConstant.FRA_TABLE_EXTEND_PROPERTY_COLUMNS_FIX_VALUE];
                         }
                         catch (Exception exTans)
                         {
                             throw new Exception("请保证表列的扩展属性“动态固定值”为TableCoulnmDefaultType枚举类型！" + exTans.Message);
                         }
-                        if (tcy == TableCoulnmDefaultType.DateTime)
+                        if (tcy == DbDefaultValueType.DateTime)
                         {
                             strInsertEnd.Append(sDouHao + "getdate()");
                             strUpdate.Append(sUpdateDouHao + dc.ColumnName + "=getdate()");
                         }
-                        else if (tcy == TableCoulnmDefaultType.TimeStamp)
+                        else if (tcy == DbDefaultValueType.TimeStamp)
                         {
                             strInsertEnd.Append(sDouHao + "@@DBTS");
                             strUpdate.Append(sUpdateDouHao + dc.ColumnName + "=@@DBTS");
                         }
-                        else if (tcy == TableCoulnmDefaultType.Guid)
+                        else if (tcy == DbDefaultValueType.Guid)
                         {
                             strInsertEnd.Append(sDouHao + "NEWID()");
                             strUpdate.Append(sUpdateDouHao + dc.ColumnName + "=NEWID()");
@@ -797,7 +799,7 @@ namespace Breezee.AutoSQLExecutor.SqlServer
             return dtReturn;
         }
 
-        public override DataTable GetSqlSchemaTableColumns(string tableName)
+        public override DataTable GetSqlSchemaTableColumns(string tableName, string sSchema = null)
         {
             string sSql = @"SELECT
                 TABLE_NAME = D.NAME ,

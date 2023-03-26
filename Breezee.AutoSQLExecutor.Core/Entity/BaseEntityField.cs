@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Breezee.Core.Interface;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
@@ -193,8 +194,8 @@ namespace Breezee.AutoSQLExecutor.Core
         /// <summary>
         /// 默认值类型
         /// </summary>
-        public TableCoulnmDefaultType DefaultValueType { get; set; }
-        public BaseEntityField DefaultType(TableCoulnmDefaultType sValue)
+        public DbDefaultValueType DefaultValueType { get; set; }
+        public BaseEntityField DefaultType(DbDefaultValueType sValue)
         {
             DefaultValueType = sValue;
             return this;

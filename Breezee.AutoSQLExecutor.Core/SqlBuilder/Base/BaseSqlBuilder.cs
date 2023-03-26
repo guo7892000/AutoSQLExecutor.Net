@@ -1,5 +1,7 @@
 ﻿using Breezee.Core.Interface;
 using org.breezee.MyPeachNet;
+using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Text;
 
