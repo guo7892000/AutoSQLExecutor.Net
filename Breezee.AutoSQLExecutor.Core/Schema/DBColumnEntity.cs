@@ -12,8 +12,13 @@ namespace Breezee.AutoSQLExecutor.Core
     public class DBColumnEntity
     {
         //Table
+        public string DBName;
+        public string Owner;
         public string TableSchema;
         public string TableName;
+        public string TableNameCN;
+        public string TableComments;
+        public string TableExtra;
         //Column
         public int SortNum;//排序号
         public string Name;
@@ -32,8 +37,14 @@ namespace Breezee.AutoSQLExecutor.Core
         public static DBColumnEntity GetEntity(DataRow dr)
         {
             DBColumnEntity entity = new DBColumnEntity();
+            entity.DBName = dr[SqlString.DBName].ToString();
+            entity.Owner = dr[SqlString.Owner].ToString();
             entity.TableSchema = dr[SqlString.TableSchema].ToString();
             entity.TableName = dr[SqlString.TableName].ToString();
+            entity.TableNameCN = dr[SqlString.TableNameCN].ToString();
+            entity.TableComments = dr[SqlString.TableComments].ToString();
+            entity.TableExtra = dr[SqlString.TableExtra].ToString();
+
             entity.SortNum = int.Parse(dr[SqlString.SortNum].ToString());
             entity.Name = dr[SqlString.Name].ToString();
             entity.DataType = dr[SqlString.DataType].ToString();
@@ -63,8 +74,14 @@ namespace Breezee.AutoSQLExecutor.Core
             foreach (var entity in entityList)
             {
                 DataRow dr = dt.NewRow();
+                dr[SqlString.DBName] = entity.DBName;
+                dr[SqlString.Owner] = entity.Owner;
                 dr[SqlString.TableSchema] = entity.TableSchema;
                 dr[SqlString.TableName] = entity.TableName;
+                dr[SqlString.TableNameCN] = entity.TableNameCN;
+                dr[SqlString.TableComments] = entity.TableComments;
+                dr[SqlString.TableExtra] = entity.TableExtra;
+
                 dr[SqlString.SortNum] = entity.SortNum;
                 dr[SqlString.Name] = entity.Name;
                 dr[SqlString.DataType] = entity.DataType;
@@ -87,22 +104,29 @@ namespace Breezee.AutoSQLExecutor.Core
         public static DataTable GetTableStruct()
         {
             DataTable dt = new DataTable();
-            DataColumn dc = new DataColumn(SqlString.TableSchema);
-            DataColumn dc1 = new DataColumn(SqlString.TableName);
-            DataColumn dc2 = new DataColumn(SqlString.SortNum,typeof(int));
-            DataColumn dc3 = new DataColumn(SqlString.Name);
-            DataColumn dc4 = new DataColumn(SqlString.DataType);
-            DataColumn dc5 = new DataColumn(SqlString.DataLength);
-            DataColumn dc6 = new DataColumn(SqlString.DataPrecision);
-            DataColumn dc7 = new DataColumn(SqlString.DataScale);
-            DataColumn dc8 = new DataColumn(SqlString.DataTypeFull);
-            DataColumn dc9 = new DataColumn(SqlString.Default);
-            DataColumn dc10 = new DataColumn(SqlString.NotNull);
-            DataColumn dc11 = new DataColumn(SqlString.KeyType);
-            DataColumn dc12 = new DataColumn(SqlString.Comments);
-            DataColumn dc13 = new DataColumn(SqlString.NameCN);
-            DataColumn dc14 = new DataColumn(SqlString.Extra);
-            dt.Columns.AddRange(new DataColumn[] { dc,dc1, dc2, dc3, dc4,dc5,dc6,dc7,dc8,dc9,dc10,dc11,dc12, dc13, dc14 });
+            dt.Columns.AddRange(new DataColumn[] {
+                new DataColumn(SqlString.DBName),
+                new DataColumn(SqlString.Owner),
+                new DataColumn(SqlString.TableSchema),
+                new DataColumn(SqlString.TableName),
+                new DataColumn(SqlString.TableNameCN),
+                new DataColumn(SqlString.TableComments),
+                new DataColumn(SqlString.TableExtra),
+
+                new DataColumn(SqlString.SortNum,typeof(int)),
+                new DataColumn(SqlString.Name),
+                new DataColumn(SqlString.DataType),
+                new DataColumn(SqlString.DataLength),
+                new DataColumn(SqlString.DataPrecision),
+                new DataColumn(SqlString.DataScale),
+                new DataColumn(SqlString.DataTypeFull),
+                new DataColumn(SqlString.Default),
+                new DataColumn(SqlString.NotNull),
+                new DataColumn(SqlString.KeyType),
+                new DataColumn(SqlString.Comments),
+                new DataColumn(SqlString.NameCN),
+                new DataColumn(SqlString.Extra)
+        });
             dt.TableName = "DBSchemaColumns";
             return dt;
         }
@@ -113,8 +137,13 @@ namespace Breezee.AutoSQLExecutor.Core
         /// </summary>
         public static class SqlString
         {
-            public static string TableSchema = "TABLE_SCHEMA"; 
-            public static string TableName = "TABLE_NAME";
+            public static string DBName = DBTableEntity.SqlString.DBName;
+            public static string Owner = DBTableEntity.SqlString.Owner;
+            public static string TableSchema = DBTableEntity.SqlString.Schema;
+            public static string TableName = DBTableEntity.SqlString.Name;
+            public static string TableNameCN = DBTableEntity.SqlString.NameCN;
+            public static string TableComments = DBTableEntity.SqlString.Comments;
+            public static string TableExtra = DBTableEntity.SqlString.Extra;
 
             public static string SortNum = "ORDINAL_POSITION";//排序号
             public static string Name = "COLUMN_NAME";//列名

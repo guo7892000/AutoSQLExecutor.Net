@@ -779,16 +779,17 @@ namespace Breezee.AutoSQLExecutor.PostgreSQL
             if (string.IsNullOrEmpty(sSchema)) sSchema = "public";
 
             string sSql = @"SELECT A.TABLENAME AS TABLE_NAME,A.SCHEMANAME AS TABLE_SCHEMA,A.TABLEOWNER AS TABLE_OWNER,
-                    CAST(OBJ_DESCRIPTION(RELFILENODE,'PG_CLASS') AS VARCHAR) AS TABLE_COMMENT
+                    d.description AS TABLE_COMMENT
                 FROM PG_TABLES A
                 LEFT JOIN PG_CLASS B
                   ON A.TABLENAME = B.RELNAME
+				LEFT JOIN pg_description d 
+				  ON d.objoid = B.oid AND d.objsubid = '0'
                 WHERE 1=1 AND POSITION('_2' IN A.TABLENAME)=0
                 AND SCHEMANAME = '#TABLE_SCHEMA#'
                 AND TABLENAME = '#TABLE_NAME#'
             ";
-
-            
+           
             dic["TABLE_SCHEMA"] = sSchema;
             dic["TABLE_NAME"] = sTableName;
             DataTable dtSource = QueryAutoParamSqlData(sSql, dic);
@@ -831,7 +832,9 @@ namespace Breezee.AutoSQLExecutor.PostgreSQL
 	            B.COLUMN_COMMENT,
 	            B.COLUMN_TYPE,
                 split_part(B.COLUMN_COMMENT,':',1) AS COLUMN_CN,
-                split_part(B.COLUMN_COMMENT,':',2) AS COLUMN_EXTRA
+                split_part(B.COLUMN_COMMENT,':',2) AS COLUMN_EXTRA,
+				C.TABLE_COMMENT,
+				C.TABLE_OWNER
             FROM INFORMATION_SCHEMA.COLUMNS A
             LEFT JOIN (select c.relname,a.attname,d.description COLUMN_COMMENT,
 		               concat_ws('',t.typname,SUBSTRING(format_type(a.atttypid,a.atttypmod) from '\(.*\)')) as COLUMN_TYPE 
@@ -839,9 +842,19 @@ namespace Breezee.AutoSQLExecutor.PostgreSQL
 	            where a.attnum>0 and a.attrelid=c.oid and a.atttypid=t.oid and d.objoid=a.attrelid and d.objsubid=a.attnum
 	            and c.relname in (select tablename from pg_tables where schemaname='public' and position('_2' in tablename)=0) 
              ) B ON A.TABLE_NAME = B.relname AND A.COLUMN_NAME = B.attname
+			 LEFT JOIN (
+			 	SELECT A.TABLENAME AS TABLE_NAME,A.SCHEMANAME AS TABLE_SCHEMA,A.TABLEOWNER AS TABLE_OWNER,
+                    d.description AS TABLE_COMMENT
+                FROM PG_TABLES A
+                LEFT JOIN PG_CLASS B
+                  ON A.TABLENAME = B.RELNAME
+				LEFT JOIN pg_description d 
+				  ON d.objoid = B.oid AND d.objsubid = '0'
+                WHERE 1=1 AND POSITION('_2' IN A.TABLENAME)=0
+			 ) C ON A.TABLE_NAME = C.TABLE_NAME AND A.TABLE_SCHEMA = C.TABLE_SCHEMA
             WHERE 1=1 
-            AND upper(A.TABLE_SCHEMA)='PUBLIC' 
-            AND A.TABLE_NAME = '#TABLE_NAME#'
+                AND upper(A.TABLE_SCHEMA)='PUBLIC'  
+                AND A.TABLE_NAME = '#TABLE_NAME#'
             ORDER BY A.ORDINAL_POSITION ASC
             ";
 
@@ -854,6 +867,9 @@ namespace Breezee.AutoSQLExecutor.PostgreSQL
                 DataRow dr = dtReturn.NewRow();
                 dr[DBColumnEntity.SqlString.TableSchema] = drS["TABLE_SCHEMA"];//Schema跟数据库名称一样
                 dr[DBColumnEntity.SqlString.TableName] = drS["TABLE_NAME"];
+                dr[DBColumnEntity.SqlString.Owner] = drS["TABLE_OWNER"];//拥有者
+                DBSchemaCommon.SetComment(dr, drS["TABLE_COMMENT"].ToString());
+
                 dr[DBColumnEntity.SqlString.SortNum] = drS["ORDINAL_POSITION"];
                 dr[DBColumnEntity.SqlString.Name] = drS["COLUMN_NAME"];
                 dr[DBColumnEntity.SqlString.Comments] = drS["COLUMN_COMMENT"];

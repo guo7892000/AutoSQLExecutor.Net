@@ -33,14 +33,15 @@ namespace Breezee.AutoSQLExecutor.Core
         public static DataTable GetTableStruct()
         {
             DataTable dt = new DataTable();
-            DataColumn dc1 = new DataColumn(SqlString.DBName);
-            DataColumn dc2 = new DataColumn(SqlString.Owner);
-            DataColumn dc3 = new DataColumn(SqlString.Schema);
-            DataColumn dc4 = new DataColumn(SqlString.Name);
-            DataColumn dc5 = new DataColumn(SqlString.Comments);
-            DataColumn dc6 = new DataColumn(SqlString.NameCN);
-            DataColumn dc7 = new DataColumn(SqlString.Extra);
-            dt.Columns.AddRange(new DataColumn[] { dc1, dc2, dc3, dc4, dc5, dc6, dc7 });
+            dt.Columns.AddRange(new DataColumn[] { 
+                new DataColumn(SqlString.DBName), 
+                new DataColumn(SqlString.Owner), 
+                new DataColumn(SqlString.Schema), 
+                new DataColumn(SqlString.Name),
+                new DataColumn(SqlString.Comments),
+                new DataColumn(SqlString.NameCN),
+                new DataColumn(SqlString.Extra) 
+            });
             dt.TableName = "DBSchemaTables";
             return dt;
         }

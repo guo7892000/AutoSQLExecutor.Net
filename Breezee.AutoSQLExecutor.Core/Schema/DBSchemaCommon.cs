@@ -8,31 +8,38 @@ namespace Breezee.AutoSQLExecutor.Core
 {
     public class DBSchemaCommon
     {
-        public static void SetComment(DataRow dr, string sComment)
+        public static void SetComment(DataRow dr, string sComment,bool isTable=true)
         {
             if (string.IsNullOrEmpty(sComment)) return;
             string[] arr = sComment.Split(new char[] { ':', '：' });
-            if (dr.Table.Columns.Contains(DBTableEntity.SqlString.Comments))
+            if (isTable)
             {
-                dr[DBTableEntity.SqlString.Comments] = sComment;
-                dr[DBTableEntity.SqlString.NameCN] = arr[0];
-                if (arr.Length > 1)
+                if (dr.Table.Columns.Contains(DBTableEntity.SqlString.Comments))
                 {
-                    dr[DBTableEntity.SqlString.Extra] = arr[1];
+                    dr[DBTableEntity.SqlString.Comments] = sComment;
+                    dr[DBTableEntity.SqlString.NameCN] = arr[0];
+                    if (arr.Length > 1 && dr.Table.Columns.Contains(DBColumnEntity.SqlString.Extra))
+                    {
+                        dr[DBTableEntity.SqlString.Extra] = arr[1];
+                    }
                 }
             }
-            else if (dr.Table.Columns.Contains(DBColumnEntity.SqlString.Comments))
+            else
             {
-                dr[DBColumnEntity.SqlString.Comments] = sComment;
-                dr[DBColumnEntity.SqlString.NameCN] = arr[0];
-                if (arr.Length > 1)
+                if (dr.Table.Columns.Contains(DBColumnEntity.SqlString.Comments))
                 {
-                    dr[DBColumnEntity.SqlString.Extra] = arr[1];
-                }
+                    dr[DBColumnEntity.SqlString.Comments] = sComment;
+                    dr[DBColumnEntity.SqlString.NameCN] = arr[0];
+                    if (arr.Length > 1 && dr.Table.Columns.Contains(DBColumnEntity.SqlString.Extra))
+                    {
+                        dr[DBColumnEntity.SqlString.Extra] = arr[1];
+                    }
 
-            }
-            
+                }
+            }            
         }
+
+
 
         public static String GetFullType(DataRow dr)
         {

@@ -593,15 +593,13 @@ namespace Breezee.AutoSQLExecutor.Oracle
             using (OracleConnection con = (OracleConnection)GetCurrentConnection())
             {
                 if (con.State == ConnectionState.Closed) con.Open();
-                DataTable dtSource = con.GetSchema(DBSchemaString.Databases, null);
+                //Oracle没有DBSchemaString.Databases；所以后面直接使用用户名作为树的根节点
+                //DataTable dtSource = con.GetSchema(DBSchemaString.Databases, null);
                 //返回标准的结果表
                 DataTable dtReturn = DT_DataBase;
-                foreach (DataRow drS in dtSource.Rows)
-                {
-                    DataRow dr = dtReturn.NewRow();
-                    dr[DBDataBaseEntity.SqlString.Name] = drS[OracleSchemaString.DataBase.Name];
-                    dtReturn.Rows.Add(dr);
-                }
+                DataRow dr = dtReturn.NewRow();
+                dr[DBDataBaseEntity.SqlString.Name] = DbServer.UserName;
+                dtReturn.Rows.Add(dr);
                 return dtReturn;
             }
         }
@@ -755,9 +753,13 @@ namespace Breezee.AutoSQLExecutor.Oracle
                 WHERE UPPER(AA.TABLE_NAME) = UPPER(A.TABLE_NAME)
                         AND UPPER(BB.COLUMN_NAME) = UPPER(A.COLUMN_NAME)
                         AND AA.OWNER=BB.OWNER AND AA.OWNER=A.OWNER
-                AND AA.CONSTRAINT_TYPE='P' AND ROWNUM=1) COLUMN_KEY
+                AND AA.CONSTRAINT_TYPE='P' AND ROWNUM=1) COLUMN_KEY,
+                C.COMMENTS AS TABLE_COMMENT,
+                A.OWNER AS TABLE_OWNER
             FROM ALL_TAB_COLS A
             JOIN ALL_COL_COMMENTS B ON A.TABLE_NAME=B.TABLE_NAME AND A.COLUMN_NAME=B.COLUMN_NAME AND A.OWNER=B.OWNER
+            JOIN ALL_TAB_COMMENTS C
+                 ON A.TABLE_NAME = C.TABLE_NAME AND A.OWNER = C.OWNER
             WHERE 1=1
             AND UPPER(A.TABLE_NAME) = '#TABLE_NAME#'
             AND A.OWNER = '#TABLE_SCHEMA#'
@@ -774,6 +776,9 @@ namespace Breezee.AutoSQLExecutor.Oracle
                 DataRow dr = dtReturn.NewRow();
                 dr[DBColumnEntity.SqlString.TableSchema] = drS["TABLE_SCHEMA"];//Schema跟数据库名称一样
                 dr[DBColumnEntity.SqlString.TableName] = drS["TABLE_NAME"];
+                dr[DBColumnEntity.SqlString.Owner] = drS["TABLE_OWNER"];
+                DBSchemaCommon.SetComment(dr, drS["TABLE_COMMENT"].ToString());
+
                 dr[DBColumnEntity.SqlString.SortNum] = drS["ORDINAL_POSITION"];
                 dr[DBColumnEntity.SqlString.Name] = drS["COLUMN_NAME"];
                 dr[DBColumnEntity.SqlString.Comments] = drS["COLUMN_COMMENT"];
@@ -784,6 +789,8 @@ namespace Breezee.AutoSQLExecutor.Oracle
                 dr[DBColumnEntity.SqlString.DataPrecision] = drS["NUMERIC_PRECISION"];
                 dr[DBColumnEntity.SqlString.DataScale] = drS["NUMERIC_SCALE"];
                 dr[DBColumnEntity.SqlString.KeyType] = drS["COLUMN_KEY"];
+                DBSchemaCommon.SetComment(dr, drS["COLUMN_COMMENT"].ToString(),false);
+
                 //dr[DBColumnEntity.SqlString.DataTypeFull] = drS["COLUMN_TYPE"];
                 //dr[DBColumnEntity.SqlString.NameCN] = drS["COLUMN_CN"];
                 //dr[DBColumnEntity.SqlString.Extra] = drS["COLUMN_EXTRA"];

@@ -20,6 +20,8 @@ namespace Breezee.AutoSQLExecutor.Core
         public string TableNameUpper;//表编码的大驼峰式
         public string TableNameLower;//表编码的小驼峰式
         public string TableSchema;
+        public string TableComments;
+        public string TableExtra;
         //Column
         public string Name;//列名
         public string NameCN;//列中文名称：从列备注中拆分
@@ -49,10 +51,12 @@ namespace Breezee.AutoSQLExecutor.Core
             if (relCol.Keys.Count() == 0)
             {
                 relCol[SqlString.TableName] = DBColumnEntity.SqlString.TableName;
-                relCol[SqlString.TableNameCN] = DBColumnEntity.SqlString.TableSchema;
+                relCol[SqlString.TableNameCN] = DBColumnEntity.SqlString.TableNameCN;
                 relCol[SqlString.TableNameUpper] = DBColumnEntity.SqlString.TableName;
                 relCol[SqlString.TableNameLower] = DBColumnEntity.SqlString.TableName;
                 relCol[SqlString.TableSchema] = DBColumnEntity.SqlString.TableSchema;
+                relCol[SqlString.TableComments] = DBColumnEntity.SqlString.TableComments;
+                relCol[SqlString.TableExtra] = DBColumnEntity.SqlString.TableExtra;
 
                 relCol[SqlString.Name] = DBColumnEntity.SqlString.Name;
                 relCol[SqlString.NameCN] = DBColumnEntity.SqlString.NameCN;
@@ -79,6 +83,10 @@ namespace Breezee.AutoSQLExecutor.Core
             DBColumnSimpleEntity entity = new DBColumnSimpleEntity();
             entity.TableSchema = dr[DBColumnEntity.SqlString.TableSchema].ToString();
             entity.TableName = dr[DBColumnEntity.SqlString.TableName].ToString();
+            entity.TableNameCN = dr[DBColumnEntity.SqlString.TableNameCN].ToString();
+            entity.TableComments = dr[DBColumnEntity.SqlString.TableComments].ToString();
+            entity.TableExtra = dr[DBColumnEntity.SqlString.TableExtra].ToString();
+
             entity.SortNum = int.Parse(dr[DBColumnEntity.SqlString.SortNum].ToString());
             entity.Name = dr[DBColumnEntity.SqlString.Name].ToString();
             entity.DataType = dr[DBColumnEntity.SqlString.DataType].ToString();
@@ -110,9 +118,11 @@ namespace Breezee.AutoSQLExecutor.Core
                 DataRow dr = dt.NewRow();
                 //表相关
                 dr[SqlString.TableName] = entity.TableName;
-                dr[SqlString.TableNameCN] = entity.TableSchema;
+                dr[SqlString.TableNameCN] = entity.TableNameCN;
                 dr[SqlString.TableNameUpper] = entity.TableName.FirstLetterUpper();
                 dr[SqlString.TableNameLower] = entity.TableSchema.FirstLetterUpper(false);
+                dr[SqlString.TableComments] = entity.TableComments;
+                dr[SqlString.TableExtra] = entity.TableExtra;
                 dr[SqlString.TableSchema] = entity.TableSchema;
                 //列相关
                 dr[SqlString.Name] = entity.Name;
@@ -157,6 +167,8 @@ namespace Breezee.AutoSQLExecutor.Core
             public static string TableNameCN = "T1";
             public static string TableNameUpper = "T2";//表编码的大驼峰式
             public static string TableNameLower = "T3";//表编码的小驼峰式
+            public static string TableComments = "T7";
+            public static string TableExtra = "T8";
             public static string TableSchema = "T9";
 
             public static string Name = "C";//列名

@@ -704,9 +704,9 @@ namespace Breezee.AutoSQLExecutor.MySql
                     DataRow dr = dtReturn.NewRow();
                     dr[DBColumnEntity.SqlString.TableSchema] = drS[MySqlSchemaString.Column.TableSchema];//Schema跟数据库名称一样
                     dr[DBColumnEntity.SqlString.TableName] = drS[MySqlSchemaString.Column.TableName];
+
                     dr[DBColumnEntity.SqlString.SortNum] = drS[MySqlSchemaString.Column.OrdinalPosition];
                     dr[DBColumnEntity.SqlString.Name] = drS[MySqlSchemaString.Column.ColumnName];
-                    //dr[DBColumnEntity.SqlString.Comments] = drS["COLUMN_COMMENT"];
                     dr[DBColumnEntity.SqlString.Default] = drS[MySqlSchemaString.Column.ColumnDefault];
                     dr[DBColumnEntity.SqlString.NotNull] = drS[MySqlSchemaString.Column.IsNullable].ToString().ToUpper().Equals("NO") ? "1" : "";
                     dr[DBColumnEntity.SqlString.DataType] = drS[MySqlSchemaString.Column.DataType];
@@ -715,10 +715,11 @@ namespace Breezee.AutoSQLExecutor.MySql
                     dr[DBColumnEntity.SqlString.DataScale] = drS[MySqlSchemaString.Column.Numeric_Scale];
                     dr[DBColumnEntity.SqlString.DataTypeFull] = drS[MySqlSchemaString.Column.ColumnType];
                     dr[DBColumnEntity.SqlString.KeyType] = drS[MySqlSchemaString.Column.KeyType].ToString().ToUpper().Equals("PRI")?"PK":"";
-                    DBSchemaCommon.SetComment(dr, drS[MySqlSchemaString.Column.ColumnComment].ToString());
+
+                    DBSchemaCommon.SetComment(dr, drS[MySqlSchemaString.Column.ColumnComment].ToString(),false);
                     //dr[SqlColumnEntity.SqlString.NameCN] = drS["COLUMN_CN"];
                     //dr[SqlColumnEntity.SqlString.Extra] = drS["COLUMN_EXTRA"];
-
+                    //dr[DBColumnEntity.SqlString.Comments] = drS["COLUMN_COMMENT"];
                     dtReturn.Rows.Add(dr);
                 }
                 return dtReturn;
@@ -757,25 +758,27 @@ namespace Breezee.AutoSQLExecutor.MySql
 
         public override DataTable GetSqlSchemaTableColumns(string sTableName, string sSchema = null)
         {
-            string sSql = @"SELECT TABLE_SCHEMA,
-	            TABLE_NAME,
-	            ORDINAL_POSITION,
-	            COLUMN_NAME,
-	            COLUMN_COMMENT,
-	            COLUMN_DEFAULT,
-	            IS_NULLABLE,
-	            DATA_TYPE,
-	            CHARACTER_MAXIMUM_LENGTH,
-	            NUMERIC_PRECISION,
-	            NUMERIC_SCALE,
-	            COLUMN_TYPE,
-	            COLUMN_KEY,
-	            SUBSTRING_INDEX(COLUMN_COMMENT,':',1) AS COLUMN_CN,
-	            SUBSTRING_INDEX(COLUMN_COMMENT,':',-1) AS COLUMN_EXTRA
-            FROM information_schema.`COLUMNS`
+            string sSql = @"SELECT A.TABLE_SCHEMA,
+			            A.TABLE_NAME,
+			            A.ORDINAL_POSITION,
+			            A.COLUMN_NAME,
+			            A.COLUMN_COMMENT,
+			            A.COLUMN_DEFAULT,
+			            A.IS_NULLABLE,
+			            A.DATA_TYPE,
+			            A.CHARACTER_MAXIMUM_LENGTH,
+			            A.NUMERIC_PRECISION,
+			            A.NUMERIC_SCALE,
+			            A.COLUMN_TYPE,
+			            A.COLUMN_KEY,
+			            SUBSTRING_INDEX(A.COLUMN_COMMENT,':',1) AS COLUMN_CN,
+			            SUBSTRING_INDEX(A.COLUMN_COMMENT,':',-1) AS COLUMN_EXTRA,
+			            B.TABLE_COMMENT
+            FROM information_schema.`COLUMNS` A
+            JOIN INFORMATION_SCHEMA.`TABLES` B ON A.TABLE_SCHEMA = B.TABLE_SCHEMA AND A.TABLE_NAME = B.TABLE_NAME
             WHERE 1=1
-            AND TABLE_NAME = '#TABLE_NAME#'
-            AND TABLE_SCHEMA = '#TABLE_SCHEMA#'
+                AND A.TABLE_NAME = '#TABLE_NAME#'
+                AND A.TABLE_SCHEMA = '#TABLE_SCHEMA#'
             ";
 
             IDictionary<string, string> dic = new Dictionary<string, string>();
@@ -788,6 +791,7 @@ namespace Breezee.AutoSQLExecutor.MySql
                 DataRow dr = dtReturn.NewRow();
                 dr[DBColumnEntity.SqlString.TableSchema] = drS["TABLE_SCHEMA"];//Schema跟数据库名称一样
                 dr[DBColumnEntity.SqlString.TableName] = drS["TABLE_NAME"];
+                DBSchemaCommon.SetComment(dr, drS["TABLE_COMMENT"].ToString());
                 dr[DBColumnEntity.SqlString.SortNum] = drS["ORDINAL_POSITION"];
                 dr[DBColumnEntity.SqlString.Name] = drS["COLUMN_NAME"];
                 dr[DBColumnEntity.SqlString.Comments] = drS["COLUMN_COMMENT"];

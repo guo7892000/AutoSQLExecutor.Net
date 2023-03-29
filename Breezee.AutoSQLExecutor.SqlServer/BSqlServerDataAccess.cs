@@ -8,7 +8,9 @@ using System.Data.Common;
 using System.Xml;
 using Breezee.AutoSQLExecutor.Core;
 using Breezee.Core.Interface;
-using Microsoft.Data.SqlClient;
+//using System.Data.SqlClient;   //net4引入此空间
+using Microsoft.Data.SqlClient;   //net6引入此空间
+
 
 namespace Breezee.AutoSQLExecutor.SqlServer
 {
@@ -841,15 +843,16 @@ namespace Breezee.AutoSQLExecutor.SqlServer
                 DataRow dr = dtReturn.NewRow();
                 //dr[DBColumnEntity.SqlString.TableSchema] = drS["TABLE_SCHEMA"];//Schema跟数据库名称一样
                 dr[DBColumnEntity.SqlString.TableName] = drS["TABLE_NAME"];
+                DBSchemaCommon.SetComment(dr, drS["TABLE_COMMENT"].ToString());
+
                 dr[DBColumnEntity.SqlString.SortNum] = drS["ORDINAL_POSITION"];
                 dr[DBColumnEntity.SqlString.Name] = drS["COLUMN_NAME"];
                 dr[DBColumnEntity.SqlString.Default] = drS["COLUMN_DEFAULT"];
                 dr[DBColumnEntity.SqlString.NotNull] = drS["IS_NULLABLE"].ToString().Equals("0")?"1":"";
                 dr[DBColumnEntity.SqlString.DataType] = drS["DATA_TYPE"];
                 dr[DBColumnEntity.SqlString.DataLength] = drS["CHARACTER_MAXIMUM_LENGTH"];
-                
                 dr[DBColumnEntity.SqlString.KeyType] = drS["COLUMN_KEY"];
-                DBSchemaCommon.SetComment(dr, drS["COLUMN_COMMENT"].ToString());
+                DBSchemaCommon.SetComment(dr, drS["COLUMN_COMMENT"].ToString(),false);
                 if(CharLengthTypes.Where(s=> s.Equals(drS["DATA_TYPE"].ToString(), StringComparison.InvariantCultureIgnoreCase)).Count()>0)
                 {
                     dr[DBColumnEntity.SqlString.DataTypeFull] = string.Format("{0}({1})", drS["DATA_TYPE"], drS["CHARACTER_MAXIMUM_LENGTH"]);
