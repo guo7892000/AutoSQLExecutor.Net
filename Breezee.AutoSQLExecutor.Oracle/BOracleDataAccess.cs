@@ -74,7 +74,11 @@ namespace Breezee.AutoSQLExecutor.Oracle
         public override void ModifyConnectString(DbServerInfo server)
         {
             /*注：请保证可执行文件生成的全路径不要包括“括号”，否则会报“ORA - 12154: TNS: 无法解析指定的连接标识符”错误！
-				    连接字符串示例：Data Source = HUI; User ID = test01; Password = test01;*/
+             * Data Source有三种配置：
+             * 1、使用TNS名称：这种最简单，但有时也会报“ORA - 12154: TNS: 无法解析指定的连接标识符”错误。需要使用其他两种方式
+             * 2、//localhost:1521/orcl：使用IP、端口号及TNS名称
+             * 3、(DESCRIPTION=(ADDRESS=(PROTOCOL=tcp)(HOST=127.0.0.1)(PORT=1521))(CONNECT_DATA=(SERVICE_NAME=ORCL)))：TNS配置名称，这里是使用配置内容。注意需要写在一行中，不能换行。
+             * 连接字符串示例：Data Source = HUI; User ID = test01; Password = test01;*/
             _ConnectionString = server.UseConnString ? server.ConnString : string.Format("Data Source={0};User ID={1};Password={2};", server.ServerName, server.UserName, server.Password);
         }
         #endregion
@@ -762,12 +766,16 @@ namespace Breezee.AutoSQLExecutor.Oracle
                  ON A.TABLE_NAME = C.TABLE_NAME AND A.OWNER = C.OWNER
             WHERE 1=1
             AND UPPER(A.TABLE_NAME) = '#TABLE_NAME#'
-            AND A.OWNER = '#TABLE_SCHEMA#'
+            AND UPPER(A.OWNER) = '#TABLE_SCHEMA#'
             ORDER BY A.COLUMN_ID
             ";
 
             IDictionary<string, string> dic = new Dictionary<string, string>();
             dic["TABLE_NAME"] = sTableName;
+            if(string.IsNullOrEmpty(sSchema))
+            {
+                sSchema = DbServer.UserName.ToUpper(); //注：oracle中只能查自己用户下的所有表。不加该条件会把系统表都会查出来
+            }
             dic["TABLE_SCHEMA"] = sSchema;
             DataTable dtSource = QueryAutoParamSqlData(sSql, dic);
             DataTable dtReturn = DT_SchemaTableColumn;

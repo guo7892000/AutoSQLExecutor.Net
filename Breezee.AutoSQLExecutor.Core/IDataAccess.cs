@@ -471,9 +471,12 @@ namespace Breezee.AutoSQLExecutor.Core
         public DataTable QueryAutoParamSqlData(string sNotParamSql, List<FuncParam> listParam = null, DbConnection conn = null, DbTransaction dbTran = null)
         {
             IDictionary<string, string> sConditionsKeyValue = new Dictionary<string, string>();
-            foreach (FuncParam item in listParam)
+            if (listParam != null)
             {
-                sConditionsKeyValue.Add(item.Code, item.Value.ToString());
+                foreach (FuncParam item in listParam)
+                {
+                    sConditionsKeyValue.Add(item.Code, item.Value.ToString());
+                }
             }
             // 参数化处理
             ParserResult parserResult = SqlParsers.parse(SqlTypeEnum.SELECT, sNotParamSql, sConditionsKeyValue.ToObjectDict());
@@ -937,7 +940,7 @@ namespace Breezee.AutoSQLExecutor.Core
                     //添加到集合
                     listParam.Add(paramNew);
                 }
-                return ExecuteNonQueryHadParamSql(sNotParamSql, listParam, conn, dbTran);
+                return ExecuteNonQueryHadParamSql(parserResult.Sql, listParam, conn, dbTran);
             }
             throw new Exception(parserResult.Message);
         }

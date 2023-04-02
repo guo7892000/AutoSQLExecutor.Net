@@ -796,13 +796,13 @@ namespace Breezee.AutoSQLExecutor.MySql
                 dr[DBColumnEntity.SqlString.Name] = drS["COLUMN_NAME"];
                 dr[DBColumnEntity.SqlString.Comments] = drS["COLUMN_COMMENT"];
                 dr[DBColumnEntity.SqlString.Default] = drS["COLUMN_DEFAULT"];
-                dr[DBColumnEntity.SqlString.NotNull] = drS["IS_NULLABLE"].ToString().ToUpper().Equals("NO") ? "1" : "";
+                dr[DBColumnEntity.SqlString.NotNull] = "NO".Equals(drS["IS_NULLABLE"].ToString(), StringComparison.OrdinalIgnoreCase) ? "1" : ""; 
                 dr[DBColumnEntity.SqlString.DataType] = drS["DATA_TYPE"];
                 dr[DBColumnEntity.SqlString.DataLength] = drS["CHARACTER_MAXIMUM_LENGTH"];
                 dr[DBColumnEntity.SqlString.DataPrecision] = drS["NUMERIC_PRECISION"];
                 dr[DBColumnEntity.SqlString.DataScale] = drS["NUMERIC_SCALE"];
                 dr[DBColumnEntity.SqlString.DataTypeFull] = drS["COLUMN_TYPE"];
-                dr[DBColumnEntity.SqlString.KeyType] = drS["COLUMN_KEY"].ToString().ToUpper().Equals("PRI") ? "PK" : "";
+                dr[DBColumnEntity.SqlString.KeyType] = "PRI".Equals(drS["COLUMN_KEY"].ToString(), StringComparison.OrdinalIgnoreCase) ? "PK" : "";
                 dr[DBColumnEntity.SqlString.NameCN] = drS["COLUMN_CN"];
                 dr[DBColumnEntity.SqlString.Extra] = drS["COLUMN_EXTRA"];
 
