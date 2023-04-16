@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Breezee.Core.Interface;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
@@ -15,6 +16,8 @@ namespace Breezee.AutoSQLExecutor.Core
         public string Owner;
         public string Schema;
         public string Name;
+        public string TableNameUpper;//表编码的大驼峰式
+        public string TableNameLower;//表编码的小驼峰式
         public string Comments;
         public string NameCN;
         public string Extra;
@@ -25,6 +28,8 @@ namespace Breezee.AutoSQLExecutor.Core
             entity.Owner = dr[SqlString.Owner].ToString();
             entity.Schema = dr[SqlString.Schema].ToString();
             entity.Name = dr[SqlString.Name].ToString();
+            dr[SqlString.NameUpper] = entity.Name.FirstLetterUpper();
+            dr[SqlString.NameLower] = entity.Name.FirstLetterUpper(false);
             entity.Comments = dr[SqlString.Comments].ToString();
             entity.NameCN = dr[SqlString.NameCN].ToString();
             entity.Extra = dr[SqlString.Extra].ToString();
@@ -38,6 +43,8 @@ namespace Breezee.AutoSQLExecutor.Core
                 new DataColumn(SqlString.Owner), 
                 new DataColumn(SqlString.Schema), 
                 new DataColumn(SqlString.Name),
+                new DataColumn(SqlString.NameUpper),
+                new DataColumn(SqlString.NameLower),
                 new DataColumn(SqlString.Comments),
                 new DataColumn(SqlString.NameCN),
                 new DataColumn(SqlString.Extra) 
@@ -59,6 +66,8 @@ namespace Breezee.AutoSQLExecutor.Core
             public static string Comments = "TABLE_COMMENT";
             public static string NameCN = "TABLE_NAME_CN";//中文名称
             public static string Extra = "TABLE_EXTRA";//额外信息
+            public static string NameUpper = "TABLE_NAME_UPPER";//表编码的大驼峰式UpperCamelCase
+            public static string NameLower = "TABLE_NAME_LOWER";//表编码的小驼峰式lowerCamelCase
         }
     }
 }

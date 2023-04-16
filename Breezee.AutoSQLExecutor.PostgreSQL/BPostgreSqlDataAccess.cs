@@ -701,6 +701,8 @@ namespace Breezee.AutoSQLExecutor.PostgreSQL
                     DataRow dr = dtReturn.NewRow();
                     dr[DBTableEntity.SqlString.Schema] = drS[PostgreSqlSchemaString.Table.TableSchema];
                     dr[DBTableEntity.SqlString.Name] = drS[PostgreSqlSchemaString.Table.TableName];
+                    dr[DBTableEntity.SqlString.NameUpper] = drS[PostgreSqlSchemaString.Table.TableName].ToString().FirstLetterUpper();
+                    dr[DBTableEntity.SqlString.NameLower] = drS[PostgreSqlSchemaString.Table.TableName].ToString().FirstLetterUpper(false);
                     //SqlSchemaCommon.SetComment(dr, drS["TABLE_COMMENT"].ToString());
                     //dr[SqlTableEntity.SqlString.Owner] = drS["OWNER"];
 
@@ -742,8 +744,12 @@ namespace Breezee.AutoSQLExecutor.PostgreSQL
                     DataRow dr = dtReturn.NewRow();
                     dr[DBColumnEntity.SqlString.TableSchema] = drS[PostgreSqlSchemaString.Column.TableSchema];//Schema跟数据库名称一样
                     dr[DBColumnEntity.SqlString.TableName] = drS[PostgreSqlSchemaString.Column.TableName];
+                    dr[DBColumnEntity.SqlString.TableNameUpper] = drS[PostgreSqlSchemaString.Column.TableName].ToString().FirstLetterUpper();
+                    dr[DBColumnEntity.SqlString.TableNameLower] = drS[PostgreSqlSchemaString.Column.TableName].ToString().FirstLetterUpper(false);
                     dr[DBColumnEntity.SqlString.SortNum] = drS[PostgreSqlSchemaString.Column.OrdinalPosition];
-                    dr[DBColumnEntity.SqlString.Name] = drS[PostgreSqlSchemaString.Column.ColumnName];                    
+                    dr[DBColumnEntity.SqlString.Name] = drS[PostgreSqlSchemaString.Column.ColumnName];
+                    dr[DBColumnEntity.SqlString.NameUpper] = drS[PostgreSqlSchemaString.Column.ColumnName].ToString().FirstLetterUpper();
+                    dr[DBColumnEntity.SqlString.NameLower] = drS[PostgreSqlSchemaString.Column.ColumnName].ToString().FirstLetterUpper(false);
                     dr[DBColumnEntity.SqlString.Default] = drS[PostgreSqlSchemaString.Column.ColumnDefault];
                     dr[DBColumnEntity.SqlString.NotNull] = drS[PostgreSqlSchemaString.Column.IsNullable].ToString().ToUpper().Equals("NO") ? "1" : "";
                     dr[DBColumnEntity.SqlString.DataType] = drS[PostgreSqlSchemaString.Column.DataType];
@@ -785,7 +791,7 @@ namespace Breezee.AutoSQLExecutor.PostgreSQL
                   ON A.TABLENAME = B.RELNAME
 				LEFT JOIN pg_description d 
 				  ON d.objoid = B.oid AND d.objsubid = '0'
-                WHERE 1=1 AND POSITION('_2' IN A.TABLENAME)=0
+                WHERE 1=1 
                 AND SCHEMANAME = '#TABLE_SCHEMA#'
                 AND TABLENAME = '#TABLE_NAME#'
             ";
@@ -799,6 +805,8 @@ namespace Breezee.AutoSQLExecutor.PostgreSQL
                 DataRow dr = dtReturn.NewRow();
                 dr[DBTableEntity.SqlString.Schema] = drS["TABLE_SCHEMA"];//一般为public
                 dr[DBTableEntity.SqlString.Name] = drS["TABLE_NAME"];
+                dr[DBTableEntity.SqlString.NameUpper] = drS["TABLE_NAME"].ToString().FirstLetterUpper();
+                dr[DBTableEntity.SqlString.NameLower] = drS["TABLE_NAME"].ToString().FirstLetterUpper(false);
                 DBSchemaCommon.SetComment(dr, drS["TABLE_COMMENT"].ToString());
                 dr[DBTableEntity.SqlString.Owner] = drS["TABLE_OWNER"];//拥有者
                 dr[DBTableEntity.SqlString.DBName] = DbServer.Database;//数据库名
@@ -808,6 +816,15 @@ namespace Breezee.AutoSQLExecutor.PostgreSQL
         }
 
         public override DataTable GetSqlSchemaTableColumns(string sTableName, string sSchema = null)
+        {
+            List<string> listTableName = new List<string>
+            {
+                sTableName
+            };
+            return GetSqlSchemaTableColumns(listTableName, sSchema);
+        }
+
+        public override DataTable GetSqlSchemaTableColumns(List<string> listTableName, string sSchema = null)
         {
             string sSql = @"SELECT A.TABLE_NAME,
 				A.TABLE_SCHEMA,
@@ -850,16 +867,58 @@ namespace Breezee.AutoSQLExecutor.PostgreSQL
                   ON A.TABLENAME = B.RELNAME
 				LEFT JOIN pg_description d 
 				  ON d.objoid = B.oid AND d.objsubid = '0'
-                WHERE 1=1 AND POSITION('_2' IN A.TABLENAME)=0
+                WHERE 1=1
 			 ) C ON A.TABLE_NAME = C.TABLE_NAME AND A.TABLE_SCHEMA = C.TABLE_SCHEMA
-            WHERE 1=1 
+            WHERE 1=1 and A.is_updatable='YES'
                 AND upper(A.TABLE_SCHEMA)='PUBLIC'  
                 AND A.TABLE_NAME = '#TABLE_NAME#'
-            ORDER BY A.ORDINAL_POSITION ASC
+                AND A.TABLE_NAME IN (#TABLE_NAME_LIST:LS#)
+            ORDER BY A.TABLE_NAME,A.ORDINAL_POSITION
             ";
 
-            IDictionary<string, string> dic = new Dictionary<string, string>();
-            dic["TABLE_NAME"] = sTableName;//PpostgreSQl的表都是小写的。但转换SQL的工具MyPeachNet会把所有SQL转换为大写？？？
+            IDictionary<string, object> dic = new Dictionary<string, object>();
+
+            if (listTableName.Count == 0)
+            {
+                return GetColumnTable(sSql, dic);
+            }
+            else if (listTableName.Count == 1)
+            {
+                dic["TABLE_NAME"] = listTableName[0];
+                return GetColumnTable(sSql, dic);
+            }
+            else if (listTableName.Count < MaxInStringCount)
+            {
+                dic["TABLE_NAME_LIST"] = listTableName;
+                return GetColumnTable(sSql, dic);
+            }
+            else
+            {
+                List<string> listTableNameNew = new List<string>();
+                DataTable dtReturn = DT_SchemaTableColumn;
+                for (int i = 0; i < listTableName.Count; i++)
+                {
+                    listTableNameNew.Add(listTableName[i]);
+                    if (i % MaxInStringCount == 0)
+                    {
+                        dic["TABLE_NAME_LIST"] = listTableNameNew;
+                        DataTable dtQuery = GetColumnTable(sSql, dic);
+                        dtReturn.CopyExistColumnData(dtQuery);
+                        listTableNameNew.Clear();
+                    }
+                }
+                if (listTableNameNew.Count > 0)
+                {
+                    dic["TABLE_NAME_LIST"] = listTableNameNew;
+                    DataTable dtQuery = GetColumnTable(sSql, dic);
+                    dtReturn.CopyExistColumnData(dtQuery);
+                }
+                return dtReturn;
+            }
+        }
+
+        private DataTable GetColumnTable(string sSql, IDictionary<string, object> dic)
+        {
             DataTable dtSource = QueryAutoParamSqlData(sSql, dic);
             DataTable dtReturn = DT_SchemaTableColumn;
             foreach (DataRow drS in dtSource.Rows)
@@ -867,11 +926,15 @@ namespace Breezee.AutoSQLExecutor.PostgreSQL
                 DataRow dr = dtReturn.NewRow();
                 dr[DBColumnEntity.SqlString.TableSchema] = drS["TABLE_SCHEMA"];//Schema跟数据库名称一样
                 dr[DBColumnEntity.SqlString.TableName] = drS["TABLE_NAME"];
+                dr[DBColumnEntity.SqlString.TableNameUpper] = drS["TABLE_NAME"].ToString().FirstLetterUpper();
+                dr[DBColumnEntity.SqlString.TableNameLower] = drS["TABLE_NAME"].ToString().FirstLetterUpper(false);
                 dr[DBColumnEntity.SqlString.Owner] = drS["TABLE_OWNER"];//拥有者
                 DBSchemaCommon.SetComment(dr, drS["TABLE_COMMENT"].ToString());
 
                 dr[DBColumnEntity.SqlString.SortNum] = drS["ORDINAL_POSITION"];
                 dr[DBColumnEntity.SqlString.Name] = drS["COLUMN_NAME"];
+                dr[DBColumnEntity.SqlString.NameUpper] = drS["COLUMN_NAME"].ToString().FirstLetterUpper();
+                dr[DBColumnEntity.SqlString.NameLower] = drS["COLUMN_NAME"].ToString().FirstLetterUpper(false);
                 dr[DBColumnEntity.SqlString.Comments] = drS["COLUMN_COMMENT"];
                 dr[DBColumnEntity.SqlString.Default] = drS["COLUMN_DEFAULT"];
                 dr[DBColumnEntity.SqlString.NotNull] = drS["IS_NULLABLE"].ToString().ToUpper().Equals("NO") ? "1" : "";

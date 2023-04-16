@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Breezee.Core.Interface;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
@@ -16,12 +17,17 @@ namespace Breezee.AutoSQLExecutor.Core
         public string Owner;
         public string TableSchema;
         public string TableName;
+        public string TableNameUpper;//表编码的大驼峰式
+        public string TableNameLower;//表编码的小驼峰式
         public string TableNameCN;
         public string TableComments;
         public string TableExtra;
         //Column
         public int SortNum;//排序号
         public string Name;
+        public string NameUpper;//列编码的大驼峰式
+        public string NameLower;//列编码的小驼峰式
+        public string NameCN;
         public string DataType;
         public string DataLength;
         public string DataPrecision;
@@ -31,7 +37,6 @@ namespace Breezee.AutoSQLExecutor.Core
         public string NotNull;
         public DBColumnKeyType KeyType;
         public string Comments;
-        public string NameCN;
         public string Extra;
 
         public static DBColumnEntity GetEntity(DataRow dr)
@@ -41,12 +46,16 @@ namespace Breezee.AutoSQLExecutor.Core
             entity.Owner = dr[SqlString.Owner].ToString();
             entity.TableSchema = dr[SqlString.TableSchema].ToString();
             entity.TableName = dr[SqlString.TableName].ToString();
+            entity.TableNameUpper = dr[SqlString.TableName].ToString().FirstLetterUpper();
+            entity.TableNameLower = dr[SqlString.TableName].ToString().FirstLetterUpper(false);
             entity.TableNameCN = dr[SqlString.TableNameCN].ToString();
             entity.TableComments = dr[SqlString.TableComments].ToString();
             entity.TableExtra = dr[SqlString.TableExtra].ToString();
 
             entity.SortNum = int.Parse(dr[SqlString.SortNum].ToString());
             entity.Name = dr[SqlString.Name].ToString();
+            entity.NameUpper = dr[SqlString.Name].ToString().FirstLetterUpper();
+            entity.NameLower = dr[SqlString.Name].ToString().FirstLetterUpper(false);
             entity.DataType = dr[SqlString.DataType].ToString();
             entity.DataLength = dr[SqlString.DataLength].ToString();
             entity.DataPrecision = dr[SqlString.DataPrecision].ToString();
@@ -78,12 +87,18 @@ namespace Breezee.AutoSQLExecutor.Core
                 dr[SqlString.Owner] = entity.Owner;
                 dr[SqlString.TableSchema] = entity.TableSchema;
                 dr[SqlString.TableName] = entity.TableName;
+                dr[SqlString.TableNameUpper] = entity.TableName.FirstLetterUpper();
+                dr[SqlString.TableNameLower] = entity.TableName.FirstLetterUpper(false);
+
                 dr[SqlString.TableNameCN] = entity.TableNameCN;
                 dr[SqlString.TableComments] = entity.TableComments;
                 dr[SqlString.TableExtra] = entity.TableExtra;
 
                 dr[SqlString.SortNum] = entity.SortNum;
                 dr[SqlString.Name] = entity.Name;
+                dr[SqlString.NameUpper] = entity.Name.FirstLetterUpper();
+                dr[SqlString.NameLower] = entity.Name.FirstLetterUpper(false);
+
                 dr[SqlString.DataType] = entity.DataType;
                 dr[SqlString.DataLength] = entity.DataLength;
                 dr[SqlString.DataPrecision] = entity.DataPrecision;
@@ -109,12 +124,16 @@ namespace Breezee.AutoSQLExecutor.Core
                 new DataColumn(SqlString.Owner),
                 new DataColumn(SqlString.TableSchema),
                 new DataColumn(SqlString.TableName),
+                new DataColumn(SqlString.TableNameUpper),
+                new DataColumn(SqlString.TableNameLower),
                 new DataColumn(SqlString.TableNameCN),
                 new DataColumn(SqlString.TableComments),
                 new DataColumn(SqlString.TableExtra),
 
                 new DataColumn(SqlString.SortNum,typeof(int)),
                 new DataColumn(SqlString.Name),
+                new DataColumn(SqlString.NameUpper),
+                new DataColumn(SqlString.NameLower),
                 new DataColumn(SqlString.DataType),
                 new DataColumn(SqlString.DataLength),
                 new DataColumn(SqlString.DataPrecision),
@@ -141,12 +160,16 @@ namespace Breezee.AutoSQLExecutor.Core
             public static string Owner = DBTableEntity.SqlString.Owner;
             public static string TableSchema = DBTableEntity.SqlString.Schema;
             public static string TableName = DBTableEntity.SqlString.Name;
+            public static string TableNameUpper = DBTableEntity.SqlString.NameUpper;//表编码的大驼峰式UpperCamelCase
+            public static string TableNameLower = DBTableEntity.SqlString.NameLower;//表编码的小驼峰式UpperCamelCase
             public static string TableNameCN = DBTableEntity.SqlString.NameCN;
             public static string TableComments = DBTableEntity.SqlString.Comments;
             public static string TableExtra = DBTableEntity.SqlString.Extra;
 
             public static string SortNum = "ORDINAL_POSITION";//排序号
             public static string Name = "COLUMN_NAME";//列名
+            public static string NameUpper = "COLUMN_NAME_UPPER";//列编码的大驼峰式UpperCamelCase
+            public static string NameLower = "COLUMN_NAME_LOWER";//列编码的小驼峰式lowerCamelCase
             public static string DataType = "DATA_TYPE";//列类型（不含长度或精度）
             public static string DataLength = "CHARACTER_MAXIMUM_LENGTH";//长度
             public static string DataPrecision = "NUMERIC_PRECISION";//精度

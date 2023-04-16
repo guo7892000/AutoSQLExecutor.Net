@@ -93,6 +93,7 @@ namespace Breezee.AutoSQLExecutor.MySql
                 else if (item.Key.Equals("database"))
                 {
                     server.Database = item.Value;
+                    server.SchemaName = item.Value;//Schema跟数据库一致
                 }
                 else if (item.Key.Equals("uid"))
                 {
@@ -678,6 +679,8 @@ namespace Breezee.AutoSQLExecutor.MySql
                     DataRow dr = dtReturn.NewRow();
                     dr[DBTableEntity.SqlString.Schema] = drS[MySqlSchemaString.Table.TableSchema];
                     dr[DBTableEntity.SqlString.Name] = drS[MySqlSchemaString.Table.TableName];
+                    dr[DBTableEntity.SqlString.NameUpper] = drS[MySqlSchemaString.Table.TableName].ToString().FirstLetterUpper();
+                    dr[DBTableEntity.SqlString.NameLower] = drS[MySqlSchemaString.Table.TableName].ToString().FirstLetterUpper(false);
                     DBSchemaCommon.SetComment(dr, drS[MySqlSchemaString.Table.TableComment].ToString());
                     //dr[SqlTableEntity.SqlString.Owner] = drS["OWNER"];
                     dtReturn.Rows.Add(dr);
@@ -704,9 +707,12 @@ namespace Breezee.AutoSQLExecutor.MySql
                     DataRow dr = dtReturn.NewRow();
                     dr[DBColumnEntity.SqlString.TableSchema] = drS[MySqlSchemaString.Column.TableSchema];//Schema跟数据库名称一样
                     dr[DBColumnEntity.SqlString.TableName] = drS[MySqlSchemaString.Column.TableName];
-
+                    dr[DBColumnEntity.SqlString.TableNameUpper] = drS[MySqlSchemaString.Column.TableName].ToString().FirstLetterUpper();
+                    dr[DBColumnEntity.SqlString.TableNameLower] = drS[MySqlSchemaString.Column.TableName].ToString().FirstLetterUpper(false);
                     dr[DBColumnEntity.SqlString.SortNum] = drS[MySqlSchemaString.Column.OrdinalPosition];
                     dr[DBColumnEntity.SqlString.Name] = drS[MySqlSchemaString.Column.ColumnName];
+                    dr[DBColumnEntity.SqlString.NameUpper] = drS[MySqlSchemaString.Column.ColumnName].ToString().FirstLetterUpper();
+                    dr[DBColumnEntity.SqlString.NameLower] = drS[MySqlSchemaString.Column.ColumnName].ToString().FirstLetterUpper(false);
                     dr[DBColumnEntity.SqlString.Default] = drS[MySqlSchemaString.Column.ColumnDefault];
                     dr[DBColumnEntity.SqlString.NotNull] = drS[MySqlSchemaString.Column.IsNullable].ToString().ToUpper().Equals("NO") ? "1" : "";
                     dr[DBColumnEntity.SqlString.DataType] = drS[MySqlSchemaString.Column.DataType];
@@ -734,7 +740,7 @@ namespace Breezee.AutoSQLExecutor.MySql
             //TABLE_SCHEMA为数据库存名。TABLE_SCHEMA,TABLE_NAME,TABLE_COMMENT,`ENGINE`
             string sSql = @"SELECT TABLE_SCHEMA,TABLE_NAME,TABLE_COMMENT
                     FROM INFORMATION_SCHEMA.`TABLES`
-                    WHERE 1=1
+                    WHERE 1=1 AND TABLE_TYPE = 'BASE TABLE'
                     AND TABLE_SCHEMA = '#TABLE_SCHEMA#'
                     AND TABLE_NAME = '#TABLE_NAME#'
             ";
@@ -749,6 +755,8 @@ namespace Breezee.AutoSQLExecutor.MySql
                 DataRow dr = dtReturn.NewRow();
                 dr[DBTableEntity.SqlString.Schema] = drS["TABLE_SCHEMA"];//Schema跟数据库名称一样
                 dr[DBTableEntity.SqlString.Name] = drS["TABLE_NAME"];
+                dr[DBTableEntity.SqlString.NameUpper] = drS["TABLE_NAME"].ToString().FirstLetterUpper();
+                dr[DBTableEntity.SqlString.NameLower] = drS["TABLE_NAME"].ToString().FirstLetterUpper(false);
                 DBSchemaCommon.SetComment(dr, drS["TABLE_COMMENT"].ToString());
                 dr[DBTableEntity.SqlString.DBName] = DbServer.Database;//数据库名
                 dtReturn.Rows.Add(dr);
@@ -757,6 +765,15 @@ namespace Breezee.AutoSQLExecutor.MySql
         }
 
         public override DataTable GetSqlSchemaTableColumns(string sTableName, string sSchema = null)
+        {
+            List<string> listTableName = new List<string>
+            {
+                sTableName
+            };
+            return GetSqlSchemaTableColumns(listTableName, sSchema);
+        }
+
+        public override DataTable GetSqlSchemaTableColumns(List<string> listTableName, string sSchema = null)
         {
             string sSql = @"SELECT A.TABLE_SCHEMA,
 			            A.TABLE_NAME,
@@ -775,15 +792,58 @@ namespace Breezee.AutoSQLExecutor.MySql
 			            SUBSTRING_INDEX(A.COLUMN_COMMENT,':',-1) AS COLUMN_EXTRA,
 			            B.TABLE_COMMENT
             FROM information_schema.`COLUMNS` A
-            JOIN INFORMATION_SCHEMA.`TABLES` B ON A.TABLE_SCHEMA = B.TABLE_SCHEMA AND A.TABLE_NAME = B.TABLE_NAME
+            JOIN INFORMATION_SCHEMA.`TABLES` B 
+                ON A.TABLE_SCHEMA = B.TABLE_SCHEMA AND A.TABLE_NAME = B.TABLE_NAME AND B.TABLE_TYPE = 'BASE TABLE'
             WHERE 1=1
                 AND A.TABLE_NAME = '#TABLE_NAME#'
+                AND A.TABLE_NAME IN (#TABLE_NAME_LIST:LS#)
                 AND A.TABLE_SCHEMA = '#TABLE_SCHEMA#'
+            ORDER BY A.TABLE_NAME,A.ORDINAL_POSITION
             ";
 
-            IDictionary<string, string> dic = new Dictionary<string, string>();
-            dic["TABLE_NAME"] = sTableName;
+            IDictionary<string, object> dic = new Dictionary<string, object>();
             dic["TABLE_SCHEMA"] = sSchema;
+            if (listTableName.Count == 0)
+            {
+                return GetColumnTable(sSql, dic);
+            }
+            else if(listTableName.Count == 1)
+            {
+                dic["TABLE_NAME"] = listTableName[0];
+                return GetColumnTable(sSql, dic);
+            }
+            else if(listTableName.Count < MaxInStringCount)
+            {
+                dic["TABLE_NAME_LIST"] = listTableName;
+                return GetColumnTable(sSql, dic);
+            }
+            else
+            {
+                List<string> listTableNameNew = new List<string>();
+                DataTable dtReturn = DT_SchemaTableColumn;
+                for (int i = 0; i < listTableName.Count; i++)
+                {
+                    listTableNameNew.Add(listTableName[i]);
+                    if (i% MaxInStringCount == 0)
+                    {
+                        dic["TABLE_NAME_LIST"] = listTableNameNew;
+                        DataTable dtQuery = GetColumnTable(sSql, dic);
+                        dtReturn.CopyExistColumnData(dtQuery);
+                        listTableNameNew.Clear();
+                    }
+                }
+                if (listTableNameNew.Count > 0)
+                {
+                    dic["TABLE_NAME_LIST"] = listTableNameNew;
+                    DataTable dtQuery = GetColumnTable(sSql, dic);
+                    dtReturn.CopyExistColumnData(dtQuery);
+                }
+                return dtReturn;
+            }            
+        }
+
+        private DataTable GetColumnTable(string sSql, IDictionary<string, object> dic)
+        {
             DataTable dtSource = QueryAutoParamSqlData(sSql, dic);
             DataTable dtReturn = DT_SchemaTableColumn;
             foreach (DataRow drS in dtSource.Rows)
@@ -791,12 +851,16 @@ namespace Breezee.AutoSQLExecutor.MySql
                 DataRow dr = dtReturn.NewRow();
                 dr[DBColumnEntity.SqlString.TableSchema] = drS["TABLE_SCHEMA"];//Schema跟数据库名称一样
                 dr[DBColumnEntity.SqlString.TableName] = drS["TABLE_NAME"];
+                dr[DBColumnEntity.SqlString.TableNameUpper] = drS["TABLE_NAME"].ToString().FirstLetterUpper();
+                dr[DBColumnEntity.SqlString.TableNameLower] = drS["TABLE_NAME"].ToString().FirstLetterUpper(false);
                 DBSchemaCommon.SetComment(dr, drS["TABLE_COMMENT"].ToString());
                 dr[DBColumnEntity.SqlString.SortNum] = drS["ORDINAL_POSITION"];
                 dr[DBColumnEntity.SqlString.Name] = drS["COLUMN_NAME"];
+                dr[DBColumnEntity.SqlString.NameUpper] = drS["COLUMN_NAME"].ToString().FirstLetterUpper();
+                dr[DBColumnEntity.SqlString.NameLower] = drS["COLUMN_NAME"].ToString().FirstLetterUpper(false);
                 dr[DBColumnEntity.SqlString.Comments] = drS["COLUMN_COMMENT"];
                 dr[DBColumnEntity.SqlString.Default] = drS["COLUMN_DEFAULT"];
-                dr[DBColumnEntity.SqlString.NotNull] = "NO".Equals(drS["IS_NULLABLE"].ToString(), StringComparison.OrdinalIgnoreCase) ? "1" : ""; 
+                dr[DBColumnEntity.SqlString.NotNull] = "NO".Equals(drS["IS_NULLABLE"].ToString(), StringComparison.OrdinalIgnoreCase) ? "1" : "";
                 dr[DBColumnEntity.SqlString.DataType] = drS["DATA_TYPE"];
                 dr[DBColumnEntity.SqlString.DataLength] = drS["CHARACTER_MAXIMUM_LENGTH"];
                 dr[DBColumnEntity.SqlString.DataPrecision] = drS["NUMERIC_PRECISION"];

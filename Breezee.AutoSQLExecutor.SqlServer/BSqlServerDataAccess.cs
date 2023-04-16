@@ -11,7 +11,6 @@ using Breezee.Core.Interface;
 //using System.Data.SqlClient;   //net4引入此空间
 using Microsoft.Data.SqlClient;   //net6引入此空间
 
-
 namespace Breezee.AutoSQLExecutor.SqlServer
 {
     /// <summary>
@@ -685,6 +684,8 @@ namespace Breezee.AutoSQLExecutor.SqlServer
                     DataRow dr = dtReturn.NewRow();
                     dr[DBTableEntity.SqlString.Schema] = drS[SqlServerSchemaString.Table.TableSchema];
                     dr[DBTableEntity.SqlString.Name] = drS[SqlServerSchemaString.Table.TableName];
+                    dr[DBColumnEntity.SqlString.TableNameUpper] = drS[SqlServerSchemaString.Table.TableName].ToString().FirstLetterUpper();
+                    dr[DBColumnEntity.SqlString.TableNameLower] = drS[SqlServerSchemaString.Table.TableName].ToString().FirstLetterUpper(false);
                     //SqlSchemaCommon.SetComment(dr, drS["TABLE_COMMENT"].ToString());
                     //dr[DBTableEntity.SqlString.Owner] = drS["TABLE_SCHEMA"];
                     dtReturn.Rows.Add(dr);
@@ -720,8 +721,12 @@ namespace Breezee.AutoSQLExecutor.SqlServer
                     DataRow dr = dtReturn.NewRow();
                     dr[DBColumnEntity.SqlString.TableSchema] = drS[SqlServerSchemaString.Column.TableSchema];//Schema跟数据库名称一样
                     dr[DBColumnEntity.SqlString.TableName] = drS[SqlServerSchemaString.Column.TableName];
+                    dr[DBColumnEntity.SqlString.TableNameUpper] = drS[SqlServerSchemaString.Column.TableName].ToString().FirstLetterUpper();
+                    dr[DBColumnEntity.SqlString.TableNameLower] = drS[SqlServerSchemaString.Column.TableName].ToString().FirstLetterUpper(false);
                     dr[DBColumnEntity.SqlString.SortNum] = drS[SqlServerSchemaString.Column.OrdinalPosition];
                     dr[DBColumnEntity.SqlString.Name] = drS[SqlServerSchemaString.Column.ColumnName];
+                    dr[DBColumnEntity.SqlString.NameUpper] = drS[SqlServerSchemaString.Column.ColumnName].ToString().FirstLetterUpper();
+                    dr[DBColumnEntity.SqlString.NameLower] = drS[SqlServerSchemaString.Column.ColumnName].ToString().FirstLetterUpper(false);
                     //dr[SqlColumnEntity.SqlString.Comments] = drS["COLUMN_COMMENT"];
                     dr[DBColumnEntity.SqlString.Default] = drS[SqlServerSchemaString.Column.ColumnDefault];
                     dr[DBColumnEntity.SqlString.NotNull] = drS[SqlServerSchemaString.Column.IsNullable].ToString().ToUpper().Equals("NO")?"1":"";
@@ -794,6 +799,8 @@ namespace Breezee.AutoSQLExecutor.SqlServer
                 DataRow dr = dtReturn.NewRow();
                 dr[DBTableEntity.SqlString.Schema] = drS["TABLE_SCHEMA"];
                 dr[DBTableEntity.SqlString.Name] = drS["TABLE_NAME"];
+                dr[DBTableEntity.SqlString.NameUpper] = drS["TABLE_NAME"].ToString().FirstLetterUpper();
+                dr[DBTableEntity.SqlString.NameLower] = drS["TABLE_NAME"].ToString().FirstLetterUpper(false);
                 DBSchemaCommon.SetComment(dr, drS["TABLE_COMMENT"].ToString());
                 dr[DBTableEntity.SqlString.DBName] = DbServer.Database;//数据库名
                 dtReturn.Rows.Add(dr);
@@ -801,7 +808,16 @@ namespace Breezee.AutoSQLExecutor.SqlServer
             return dtReturn;
         }
 
-        public override DataTable GetSqlSchemaTableColumns(string tableName, string sSchema = null)
+        public override DataTable GetSqlSchemaTableColumns(string sTableName, string sSchema = null)
+        {
+            List<string> listTableName = new List<string>
+            {
+                sTableName
+            };
+            return GetSqlSchemaTableColumns(listTableName, sSchema);
+        }
+
+        public override DataTable GetSqlSchemaTableColumns(List<string> listTableName, string sSchema = null)
         {
             string sSql = @"SELECT
                 TABLE_NAME = D.NAME ,
@@ -831,11 +847,52 @@ namespace Breezee.AutoSQLExecutor.SqlServer
 	            ON D.ID = F.MAJOR_ID AND F.MINOR_ID = 0
             WHERE 1=1
              AND D.NAME = '#TABLE_NAME#'
-            ORDER BY A.ID,A.COLORDER
+             AND D.NAME IN (#TABLE_NAME_LIST:LS#)
+            ORDER BY D.NAME,A.COLORDER
             ";
 
-            IDictionary<string, string> dic = new Dictionary<string, string>();
-            dic["TABLE_NAME"] = tableName;
+            IDictionary<string, object> dic = new Dictionary<string, object>();
+            if (listTableName.Count == 0)
+            {
+                return GetColumnTable(sSql, dic);
+            }
+            else if(listTableName.Count == 1)
+            {
+                dic["TABLE_NAME"] = listTableName[0];
+                return GetColumnTable(sSql, dic);
+            }
+            else if (listTableName.Count < MaxInStringCount)
+            {
+                dic["TABLE_NAME_LIST"] = listTableName;
+                return GetColumnTable(sSql, dic);
+            }
+            else
+            {
+                List<string> listTableNameNew = new List<string>();
+                DataTable dtReturn = DT_SchemaTableColumn;
+                for (int i = 0; i < listTableName.Count; i++)
+                {
+                    listTableNameNew.Add(listTableName[i]);
+                    if (i % MaxInStringCount == 0)
+                    {
+                        dic["TABLE_NAME_LIST"] = listTableNameNew;
+                        DataTable dtQuery = GetColumnTable(sSql, dic);
+                        dtReturn.CopyExistColumnData(dtQuery);
+                        listTableNameNew.Clear();
+                    }
+                }
+                if (listTableNameNew.Count > 0)
+                {
+                    dic["TABLE_NAME_LIST"] = listTableNameNew;
+                    DataTable dtQuery = GetColumnTable(sSql, dic);
+                    dtReturn.CopyExistColumnData(dtQuery);
+                }
+                return dtReturn;
+            }
+        }
+
+        private DataTable GetColumnTable(string sSql, IDictionary<string, object> dic)
+        {
             DataTable dtSource = QueryAutoParamSqlData(sSql, dic);
             DataTable dtReturn = DT_SchemaTableColumn;
             foreach (DataRow drS in dtSource.Rows)
@@ -843,21 +900,25 @@ namespace Breezee.AutoSQLExecutor.SqlServer
                 DataRow dr = dtReturn.NewRow();
                 //dr[DBColumnEntity.SqlString.TableSchema] = drS["TABLE_SCHEMA"];//Schema跟数据库名称一样
                 dr[DBColumnEntity.SqlString.TableName] = drS["TABLE_NAME"];
+                dr[DBColumnEntity.SqlString.TableNameUpper] = drS["TABLE_NAME"].ToString().FirstLetterUpper();
+                dr[DBColumnEntity.SqlString.TableNameLower] = drS["TABLE_NAME"].ToString().FirstLetterUpper(false);
                 DBSchemaCommon.SetComment(dr, drS["TABLE_COMMENT"].ToString());
 
                 dr[DBColumnEntity.SqlString.SortNum] = drS["ORDINAL_POSITION"];
                 dr[DBColumnEntity.SqlString.Name] = drS["COLUMN_NAME"];
+                dr[DBColumnEntity.SqlString.NameUpper] = drS["COLUMN_NAME"].ToString().FirstLetterUpper();
+                dr[DBColumnEntity.SqlString.NameLower] = drS["COLUMN_NAME"].ToString().FirstLetterUpper(false);
                 dr[DBColumnEntity.SqlString.Default] = drS["COLUMN_DEFAULT"];
-                dr[DBColumnEntity.SqlString.NotNull] = drS["IS_NULLABLE"].ToString().Equals("0")?"1":"";
+                dr[DBColumnEntity.SqlString.NotNull] = drS["IS_NULLABLE"].ToString().Equals("0") ? "1" : "";
                 dr[DBColumnEntity.SqlString.DataType] = drS["DATA_TYPE"];
                 dr[DBColumnEntity.SqlString.DataLength] = drS["CHARACTER_MAXIMUM_LENGTH"];
                 dr[DBColumnEntity.SqlString.KeyType] = drS["COLUMN_KEY"];
-                DBSchemaCommon.SetComment(dr, drS["COLUMN_COMMENT"].ToString(),false);
-                if(CharLengthTypes.Where(s=> s.Equals(drS["DATA_TYPE"].ToString(), StringComparison.InvariantCultureIgnoreCase)).Count()>0)
+                DBSchemaCommon.SetComment(dr, drS["COLUMN_COMMENT"].ToString(), false);
+                if (CharLengthTypes.Where(s => s.Equals(drS["DATA_TYPE"].ToString(), StringComparison.InvariantCultureIgnoreCase)).Count() > 0)
                 {
                     dr[DBColumnEntity.SqlString.DataTypeFull] = string.Format("{0}({1})", drS["DATA_TYPE"], drS["CHARACTER_MAXIMUM_LENGTH"]);
                 }
-                else if(PrecisonTypes.Where(s => s.Equals(drS["DATA_TYPE"].ToString(), StringComparison.InvariantCultureIgnoreCase)).Count() > 0)
+                else if (PrecisonTypes.Where(s => s.Equals(drS["DATA_TYPE"].ToString(), StringComparison.InvariantCultureIgnoreCase)).Count() > 0)
                 {
                     dr[DBColumnEntity.SqlString.DataPrecision] = drS["NUMERIC_PRECISION"];
                     dr[DBColumnEntity.SqlString.DataScale] = drS["NUMERIC_SCALE"];

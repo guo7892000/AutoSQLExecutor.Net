@@ -83,12 +83,16 @@ namespace Breezee.AutoSQLExecutor.Core
             DBColumnSimpleEntity entity = new DBColumnSimpleEntity();
             entity.TableSchema = dr[DBColumnEntity.SqlString.TableSchema].ToString();
             entity.TableName = dr[DBColumnEntity.SqlString.TableName].ToString();
+            entity.TableNameUpper = dr[DBColumnEntity.SqlString.TableName].ToString().FirstLetterUpper();
+            entity.TableNameLower = dr[DBColumnEntity.SqlString.TableName].ToString().FirstLetterUpper(false);
             entity.TableNameCN = dr[DBColumnEntity.SqlString.TableNameCN].ToString();
             entity.TableComments = dr[DBColumnEntity.SqlString.TableComments].ToString();
             entity.TableExtra = dr[DBColumnEntity.SqlString.TableExtra].ToString();
 
             entity.SortNum = int.Parse(dr[DBColumnEntity.SqlString.SortNum].ToString());
             entity.Name = dr[DBColumnEntity.SqlString.Name].ToString();
+            entity.NameUpper = dr[DBColumnEntity.SqlString.Name].ToString().FirstLetterUpper();
+            entity.NameLower = dr[DBColumnEntity.SqlString.Name].ToString().FirstLetterUpper(false);
             entity.DataType = dr[DBColumnEntity.SqlString.DataType].ToString();
             entity.DataLength = dr[DBColumnEntity.SqlString.DataLength].ToString();
             entity.DataPrecision = dr[DBColumnEntity.SqlString.DataPrecision].ToString();
@@ -120,7 +124,7 @@ namespace Breezee.AutoSQLExecutor.Core
                 dr[SqlString.TableName] = entity.TableName;
                 dr[SqlString.TableNameCN] = entity.TableNameCN;
                 dr[SqlString.TableNameUpper] = entity.TableName.FirstLetterUpper();
-                dr[SqlString.TableNameLower] = entity.TableSchema.FirstLetterUpper(false);
+                dr[SqlString.TableNameLower] = entity.TableName.FirstLetterUpper(false);
                 dr[SqlString.TableComments] = entity.TableComments;
                 dr[SqlString.TableExtra] = entity.TableExtra;
                 dr[SqlString.TableSchema] = entity.TableSchema;

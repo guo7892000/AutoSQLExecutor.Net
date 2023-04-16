@@ -26,6 +26,8 @@ namespace Breezee.AutoSQLExecutor.Core
     public abstract class IDataAccess
     {
         #region 变量       
+        public int MaxInStringCount = 500;
+
         public abstract DataBaseType DataBaseType { get; }
         public abstract string ConnectionString { get; protected set; }
         public abstract ISqlDifferent SqlDiff { get; protected set; }
@@ -1295,6 +1297,8 @@ namespace Breezee.AutoSQLExecutor.Core
         /// <param name="tableName"></param>
         /// <returns></returns>
         public abstract DataTable GetSqlSchemaTableColumns(string sTableName, string sSchema = null);
+
+        public abstract DataTable GetSqlSchemaTableColumns(List<string> listTableName, string sSchema = null);
         #endregion
 
         private static void SetParamType(object item, FuncParam paramNew)

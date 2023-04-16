@@ -666,6 +666,8 @@ namespace Breezee.AutoSQLExecutor.SQLite
             DataRow dr = dtReturn.NewRow();
             dr[DBTableEntity.SqlString.Schema] = drS[SQLiteSchemaString.Table.TableSchema];
             dr[DBTableEntity.SqlString.Name] = drS[SQLiteSchemaString.Table.TableName];
+            dr[DBTableEntity.SqlString.NameUpper] = drS[SQLiteSchemaString.Table.TableName].ToString().FirstLetterUpper();
+            dr[DBTableEntity.SqlString.NameLower] = drS[SQLiteSchemaString.Table.TableName].ToString().FirstLetterUpper(false);
             //SqlSchemaCommon.SetComment(dr, drS["TABLE_COMMENT"].ToString());
             dr[DBTableEntity.SqlString.Owner] = drS[SQLiteSchemaString.Table.TableCatalog];
 
@@ -690,8 +692,12 @@ namespace Breezee.AutoSQLExecutor.SQLite
                     DataRow dr = dtReturn.NewRow();
                     dr[DBColumnEntity.SqlString.TableSchema] = drS[SQLiteSchemaString.Column.TableSchema];//Schema跟数据库名称一样
                     dr[DBColumnEntity.SqlString.TableName] = drS[SQLiteSchemaString.Column.TableName];
+                    dr[DBColumnEntity.SqlString.TableNameUpper] = drS[SQLiteSchemaString.Column.TableName].ToString().FirstLetterUpper();
+                    dr[DBColumnEntity.SqlString.TableNameLower] = drS[SQLiteSchemaString.Column.TableName].ToString().FirstLetterUpper(false);
                     dr[DBColumnEntity.SqlString.SortNum] = drS[SQLiteSchemaString.Column.OrdinalPosition];
                     dr[DBColumnEntity.SqlString.Name] = drS[SQLiteSchemaString.Column.ColumnName];
+                    dr[DBColumnEntity.SqlString.NameUpper] = drS[SQLiteSchemaString.Column.ColumnName].ToString().FirstLetterUpper();
+                    dr[DBColumnEntity.SqlString.NameLower] = drS[SQLiteSchemaString.Column.ColumnName].ToString().FirstLetterUpper(false);
                     //dr[SqlColumnEntity.SqlString.Comments] = drS["COLUMN_COMMENT"];
                     dr[DBColumnEntity.SqlString.Default] = drS[SQLiteSchemaString.Column.ColumnDefault];
                     dr[DBColumnEntity.SqlString.NotNull] = drS[SQLiteSchemaString.Column.IsNullable].ToString().ToUpper().Equals("FALSE") ? "1" : "";
@@ -753,6 +759,8 @@ namespace Breezee.AutoSQLExecutor.SQLite
             {
                 DataRow dr = dtReturn.NewRow();
                 dr[DBTableEntity.SqlString.Name] = drS["TABLE_NAME"];
+                dr[DBTableEntity.SqlString.NameUpper] = drS["TABLE_NAME"].ToString().FirstLetterUpper();
+                dr[DBTableEntity.SqlString.NameLower] = drS["TABLE_NAME"].ToString().FirstLetterUpper(false);
                 dr[DBTableEntity.SqlString.DBName] = sDBName;
                 dtReturn.Rows.Add(dr);
             }
@@ -761,27 +769,59 @@ namespace Breezee.AutoSQLExecutor.SQLite
 
         public override DataTable GetSqlSchemaTableColumns(string sTableName, string sSchema = null)
         {
-            if(string.IsNullOrEmpty(sTableName))
+            List<string> listTableName = new List<string>
             {
-                throw new Exception("传入的表名不能为空！");
+                sTableName
+            };
+            return GetSqlSchemaTableColumns(listTableName, sSchema);
+        }
+
+        public override DataTable GetSqlSchemaTableColumns(List<string> listTableName, string sSchema = null)
+        {
+            DataTable dtReturn = DT_SchemaTableColumn;
+            //当传空时，查询全部表的全部列
+            if (listTableName.Count == 0)
+            {
+                string sSql = "select name from sqlite_master where type='table' order by name";
+                DataTable dtSource = QueryHadParamSqlData(sSql,new Dictionary<string,string>());
+                foreach (DataRow dr in dtSource.Rows)
+                {
+                    listTableName.Add(dr[0].ToString());
+                }
             }
-            string sSql = string.Format(@"PRAGMA TABLE_INFO('{0}')", sTableName);
-            IDictionary<string, string> dic = new Dictionary<string, string>();
+            
+            foreach (string sTableName in listTableName)
+            {
+                string sSql = string.Format(@"PRAGMA TABLE_INFO('{0}')", sTableName);
+                IDictionary<string, string> dic = new Dictionary<string, string>();
+                dic[DBColumnEntity.SqlString.TableName] = sTableName;
+                DataTable dtQuery = GetColumnTable(sSql, dic);
+                dtReturn.CopyExistColumnData(dtQuery);
+            }
+            return dtReturn;
+        }
+
+        private DataTable GetColumnTable(string sSql, IDictionary<string, string> dic)
+        {
             DataTable dtSource = QueryHadParamSqlData(sSql, dic);
             DataTable dtReturn = DT_SchemaTableColumn;
             foreach (DataRow drS in dtSource.Rows)
             {
                 DataRow dr = dtReturn.NewRow();
                 //dr[DBColumnEntity.SqlString.TableSchema] = drS["TABLE_SCHEMA"];//Schema跟数据库名称一样
-                //dr[DBColumnEntity.SqlString.TableName] = drS["TABLE_NAME"];
+                dr[DBColumnEntity.SqlString.TableName] = dic[DBColumnEntity.SqlString.TableName];
+                dr[DBColumnEntity.SqlString.TableNameUpper] = dic[DBColumnEntity.SqlString.TableName].FirstLetterUpper();
+                dr[DBColumnEntity.SqlString.TableNameLower] = dic[DBColumnEntity.SqlString.TableName].FirstLetterUpper(false);
                 dr[DBColumnEntity.SqlString.SortNum] = drS["cid"];
                 dr[DBColumnEntity.SqlString.Name] = drS["name"];
-                //dr[DBColumnEntity.SqlString.Comments] = drS["COLUMN_COMMENT"];
+                dr[DBColumnEntity.SqlString.NameUpper] = drS["name"].ToString().FirstLetterUpper();
+                dr[DBColumnEntity.SqlString.NameLower] = drS["name"].ToString().FirstLetterUpper(false);
+                //dr[DBColumnEntity.SqlString.Comments] = drS["COLUMN_COMMENT"]; //不支持
                 dr[DBColumnEntity.SqlString.Default] = drS["dflt_value"];
                 dr[DBColumnEntity.SqlString.NotNull] = drS["notnull"].Equals("1") ? "1" : "";
                 dr[DBColumnEntity.SqlString.KeyType] = drS["pk"].ToString().Equals("1") ? "PK" : "";
-                //dr[DBColumnEntity.SqlString.NameCN] = drS["COLUMN_CN"];
-                //dr[DBColumnEntity.SqlString.Extra] = drS["COLUMN_EXTRA"];
+                //dr[DBColumnEntity.SqlString.NameCN] = drS["COLUMN_CN"]; //不支持
+                //dr[DBColumnEntity.SqlString.Extra] = drS["COLUMN_EXTRA"]; //不支持
                 //类型处理
                 string sFullType = drS["type"].ToString();
                 dr[DBColumnEntity.SqlString.DataTypeFull] = sFullType;

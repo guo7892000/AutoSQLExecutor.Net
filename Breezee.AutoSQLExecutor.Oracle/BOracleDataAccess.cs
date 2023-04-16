@@ -98,6 +98,7 @@ namespace Breezee.AutoSQLExecutor.Oracle
                 else if (item.Key.Equals("user id"))
                 {
                     server.UserName = item.Value;
+                    server.SchemaName= item.Value.ToUpper();
                 }
                 else if (item.Key.Equals("password"))
                 {
@@ -627,6 +628,8 @@ namespace Breezee.AutoSQLExecutor.Oracle
                     DataRow dr = dtReturn.NewRow();
                     //dr[DBTableEntity.SqlString.Schema] = drS["OWNER"];
                     dr[DBTableEntity.SqlString.Name] = drS[OracleSchemaString.Table.TableName];
+                    dr[DBTableEntity.SqlString.NameUpper] = drS[OracleSchemaString.Table.TableName].ToString().FirstLetterUpper();
+                    dr[DBTableEntity.SqlString.NameLower] = drS[OracleSchemaString.Table.TableName].ToString().FirstLetterUpper(false);
                     //SqlSchemaCommon.SetComment(dr, drS["TABLE_COMMENT"].ToString());
                     dr[DBTableEntity.SqlString.Owner] = drS[OracleSchemaString.Table.Owner];
 
@@ -664,8 +667,12 @@ namespace Breezee.AutoSQLExecutor.Oracle
                     DataRow dr = dtReturn.NewRow();
                     dr[DBColumnEntity.SqlString.TableSchema] = drS[OracleSchemaString.Column.TableSchema];//Schema跟数据库名称一样
                     dr[DBColumnEntity.SqlString.TableName] = drS[OracleSchemaString.Column.TableName];
+                    dr[DBColumnEntity.SqlString.TableNameUpper] = drS[OracleSchemaString.Column.TableName].ToString().FirstLetterUpper();
+                    dr[DBColumnEntity.SqlString.TableNameLower] = drS[OracleSchemaString.Column.TableName].ToString().FirstLetterUpper(false);
                     dr[DBColumnEntity.SqlString.SortNum] = drS[OracleSchemaString.Column.OrdinalPosition];
                     dr[DBColumnEntity.SqlString.Name] = drS[OracleSchemaString.Column.ColumnName];
+                    dr[DBColumnEntity.SqlString.NameUpper] = drS[OracleSchemaString.Column.ColumnName].ToString().FirstLetterUpper();
+                    dr[DBColumnEntity.SqlString.NameLower] = drS[OracleSchemaString.Column.ColumnName].ToString().FirstLetterUpper(false);
                     //dr[SqlColumnEntity.SqlString.Comments] = drS["COLUMN_COMMENT"];
                     //dr[SqlColumnEntity.SqlString.Default] = drS["COLUMN_DEFAULT"];
                     dr[DBColumnEntity.SqlString.NotNull] = drS[OracleSchemaString.Column.IsNullable].ToString().ToUpper().Equals("N") ? "1" : "";
@@ -726,6 +733,8 @@ namespace Breezee.AutoSQLExecutor.Oracle
                 DataRow dr = dtReturn.NewRow();
 
                 dr[DBTableEntity.SqlString.Name] = drS["TABLE_NAME"];
+                dr[DBTableEntity.SqlString.NameUpper] = drS["TABLE_NAME"].ToString().FirstLetterUpper();
+                dr[DBTableEntity.SqlString.NameLower] = drS["TABLE_NAME"].ToString().FirstLetterUpper(false);
                 DBSchemaCommon.SetComment(dr, drS["TABLE_COMMENT"].ToString());
                 if (drS.ContainsColumn("TABLE_SCHEMA"))
                 {
@@ -739,6 +748,15 @@ namespace Breezee.AutoSQLExecutor.Oracle
         }
 
         public override DataTable GetSqlSchemaTableColumns(string sTableName, string sSchema = null)
+        {
+            List<string> listTableName = new List<string>
+            {
+                sTableName
+            };
+            return GetSqlSchemaTableColumns(listTableName, sSchema);
+        }
+
+        public override DataTable GetSqlSchemaTableColumns(List<string> listTableName, string sSchema = null)
         {
             string sSql = @"SELECT A.OWNER AS TABLE_SCHEMA,
                 A.TABLE_NAME,
@@ -761,22 +779,67 @@ namespace Breezee.AutoSQLExecutor.Oracle
                 C.COMMENTS AS TABLE_COMMENT,
                 A.OWNER AS TABLE_OWNER
             FROM ALL_TAB_COLS A
-            JOIN ALL_COL_COMMENTS B ON A.TABLE_NAME=B.TABLE_NAME AND A.COLUMN_NAME=B.COLUMN_NAME AND A.OWNER=B.OWNER
+            JOIN ALL_COL_COMMENTS B 
+                ON A.TABLE_NAME=B.TABLE_NAME AND A.COLUMN_NAME=B.COLUMN_NAME AND A.OWNER=B.OWNER
+            JOIN ALL_TABLES T
+                ON A.TABLE_NAME = T.TABLE_NAME AND A.OWNER=T.OWNER  
             JOIN ALL_TAB_COMMENTS C
-                 ON A.TABLE_NAME = C.TABLE_NAME AND A.OWNER = C.OWNER
+                ON A.TABLE_NAME = C.TABLE_NAME AND A.OWNER = C.OWNER
             WHERE 1=1
+            AND UPPER(A.TABLE_NAME) IN (#TABLE_NAME_LIST:LS#)
             AND UPPER(A.TABLE_NAME) = '#TABLE_NAME#'
             AND UPPER(A.OWNER) = '#TABLE_SCHEMA#'
-            ORDER BY A.COLUMN_ID
+            ORDER BY A.TABLE_NAME,A.COLUMN_ID
             ";
 
-            IDictionary<string, string> dic = new Dictionary<string, string>();
-            dic["TABLE_NAME"] = sTableName;
-            if(string.IsNullOrEmpty(sSchema))
+            IDictionary<string, object> dic = new Dictionary<string, object>();
+            if (string.IsNullOrEmpty(sSchema))
             {
                 sSchema = DbServer.UserName.ToUpper(); //注：oracle中只能查自己用户下的所有表。不加该条件会把系统表都会查出来
             }
             dic["TABLE_SCHEMA"] = sSchema;
+
+            if (listTableName.Count == 0)
+            {
+                return GetColumnTable(sSql, dic);
+            }
+            else if(listTableName.Count == 1)
+            {
+                dic["TABLE_NAME"] = listTableName[0].ToUpper();
+                return GetColumnTable(sSql, dic);
+            }
+            else if (listTableName.Count < MaxInStringCount)
+            {
+                dic["TABLE_NAME_LIST"] = listTableName;
+                return GetColumnTable(sSql, dic);
+            }
+            else
+            {
+                List<string> listTableNameNew = new List<string>();
+                DataTable dtReturn = DT_SchemaTableColumn;
+                for (int i = 0; i < listTableName.Count; i++)
+                {
+                    listTableNameNew.Add(listTableName[i]);
+                    if (i % MaxInStringCount == 0)
+                    {
+                        dic["TABLE_NAME_LIST"] = listTableNameNew;
+                        DataTable dtQuery = GetColumnTable(sSql, dic);
+                        dtReturn.CopyExistColumnData(dtQuery);
+                        listTableNameNew.Clear();
+                    }
+                }
+                if (listTableNameNew.Count > 0)
+                {
+                    dic["TABLE_NAME_LIST"] = listTableNameNew;
+                    DataTable dtQuery = GetColumnTable(sSql, dic);
+                    dtReturn.CopyExistColumnData(dtQuery);
+                }
+                return dtReturn;
+            }
+        }
+
+        private DataTable GetColumnTable(string sSql, IDictionary<string, object> dic)
+        {
             DataTable dtSource = QueryAutoParamSqlData(sSql, dic);
             DataTable dtReturn = DT_SchemaTableColumn;
             foreach (DataRow drS in dtSource.Rows)
@@ -784,11 +847,15 @@ namespace Breezee.AutoSQLExecutor.Oracle
                 DataRow dr = dtReturn.NewRow();
                 dr[DBColumnEntity.SqlString.TableSchema] = drS["TABLE_SCHEMA"];//Schema跟数据库名称一样
                 dr[DBColumnEntity.SqlString.TableName] = drS["TABLE_NAME"];
+                dr[DBColumnEntity.SqlString.TableNameUpper] = drS["TABLE_NAME"].ToString().FirstLetterUpper();
+                dr[DBColumnEntity.SqlString.TableNameLower] = drS["TABLE_NAME"].ToString().FirstLetterUpper(false);
                 dr[DBColumnEntity.SqlString.Owner] = drS["TABLE_OWNER"];
                 DBSchemaCommon.SetComment(dr, drS["TABLE_COMMENT"].ToString());
 
                 dr[DBColumnEntity.SqlString.SortNum] = drS["ORDINAL_POSITION"];
                 dr[DBColumnEntity.SqlString.Name] = drS["COLUMN_NAME"];
+                dr[DBColumnEntity.SqlString.NameUpper] = drS["COLUMN_NAME"].ToString().FirstLetterUpper();
+                dr[DBColumnEntity.SqlString.NameLower] = drS["COLUMN_NAME"].ToString().FirstLetterUpper(false);
                 dr[DBColumnEntity.SqlString.Comments] = drS["COLUMN_COMMENT"];
                 dr[DBColumnEntity.SqlString.Default] = drS["COLUMN_DEFAULT"];
                 dr[DBColumnEntity.SqlString.NotNull] = drS["IS_NULLABLE"].ToString().ToUpper().Equals("N") ? "1" : "";
@@ -796,8 +863,8 @@ namespace Breezee.AutoSQLExecutor.Oracle
                 dr[DBColumnEntity.SqlString.DataLength] = drS["CHARACTER_MAXIMUM_LENGTH"];
                 dr[DBColumnEntity.SqlString.DataPrecision] = drS["NUMERIC_PRECISION"];
                 dr[DBColumnEntity.SqlString.DataScale] = drS["NUMERIC_SCALE"];
-                dr[DBColumnEntity.SqlString.KeyType] = drS["COLUMN_KEY"];
-                DBSchemaCommon.SetComment(dr, drS["COLUMN_COMMENT"].ToString(),false);
+                dr[DBColumnEntity.SqlString.KeyType] = "1".Equals(drS["COLUMN_KEY"].ToString().ToUpper()) ?"PK":"";
+                DBSchemaCommon.SetComment(dr, drS["COLUMN_COMMENT"].ToString(), false);
 
                 //dr[DBColumnEntity.SqlString.DataTypeFull] = drS["COLUMN_TYPE"];
                 //dr[DBColumnEntity.SqlString.NameCN] = drS["COLUMN_CN"];
