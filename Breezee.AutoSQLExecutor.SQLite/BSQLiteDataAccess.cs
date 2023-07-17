@@ -197,6 +197,10 @@ namespace Breezee.AutoSQLExecutor.SQLite
                 {
                     conn = dbTran.Connection;
                 }
+                if (conn.State != ConnectionState.Open)
+                {
+                    conn.Open();
+                }
             }
             //构造命令
             SQLiteCommand sqlCommon;

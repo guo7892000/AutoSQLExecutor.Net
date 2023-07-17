@@ -210,6 +210,10 @@ namespace Breezee.AutoSQLExecutor.PostgreSQL
                 {
                     conn = dbTran.Connection;
                 }
+                if (conn.State != ConnectionState.Open)
+                {
+                    conn.Open();
+                }
             }
             //构造命令
             NpgsqlCommand sqlCommon;

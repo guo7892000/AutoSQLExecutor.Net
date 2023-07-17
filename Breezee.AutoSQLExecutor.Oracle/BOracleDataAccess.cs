@@ -201,6 +201,10 @@ namespace Breezee.AutoSQLExecutor.Oracle
                 {
                     conn = dbTran.Connection;
                 }
+                if (conn.State != ConnectionState.Open)
+                {
+                    conn.Open();
+                }
             }
             //构造命令
             OracleCommand sqlCommon = new OracleCommand(sHadParaSql, (OracleConnection)conn);

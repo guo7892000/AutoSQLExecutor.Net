@@ -219,6 +219,10 @@ namespace Breezee.AutoSQLExecutor.SqlServer
                 {
                     conn = dbTran.Connection;
                 }
+                if (conn.State != ConnectionState.Open)
+                {
+                    conn.Open();
+                }
             }
             //构造命令
             SqlCommand sqlCommon;
