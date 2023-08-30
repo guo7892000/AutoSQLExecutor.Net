@@ -743,7 +743,7 @@ namespace Breezee.AutoSQLExecutor.MySql
             if (string.IsNullOrEmpty(sSchema)) sSchema = DbServer.Database.ToLower();
             //TABLE_SCHEMA为数据库存名。TABLE_SCHEMA,TABLE_NAME,TABLE_COMMENT,`ENGINE`
             string sSql = @"SELECT TABLE_SCHEMA,TABLE_NAME,TABLE_COMMENT
-                    FROM INFORMATION_SCHEMA.`TABLES`
+                    FROM information_schema.`TABLES`
                     WHERE 1=1 AND TABLE_TYPE = 'BASE TABLE'
                     AND TABLE_SCHEMA = '#TABLE_SCHEMA#'
                     AND TABLE_NAME = '#TABLE_NAME#'
@@ -796,7 +796,7 @@ namespace Breezee.AutoSQLExecutor.MySql
 			            SUBSTRING_INDEX(A.COLUMN_COMMENT,':',-1) AS COLUMN_EXTRA,
 			            B.TABLE_COMMENT
             FROM information_schema.`COLUMNS` A
-            JOIN INFORMATION_SCHEMA.`TABLES` B 
+            JOIN information_schema.`TABLES` B 
                 ON A.TABLE_SCHEMA = B.TABLE_SCHEMA AND A.TABLE_NAME = B.TABLE_NAME AND B.TABLE_TYPE = 'BASE TABLE'
             WHERE 1=1
                 AND A.TABLE_NAME = '#TABLE_NAME#'
