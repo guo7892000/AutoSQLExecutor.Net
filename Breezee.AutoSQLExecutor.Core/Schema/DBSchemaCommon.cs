@@ -11,16 +11,19 @@ namespace Breezee.AutoSQLExecutor.Core
         public static void SetComment(DataRow dr, string sComment,bool isTable=true)
         {
             if (string.IsNullOrEmpty(sComment)) return;
-            string[] arr = sComment.Split(new char[] { ':', '：' });
+            string[] arr = sComment.Split(new char[] { ':', '：',' ','\r' });
             if (isTable)
             {
                 if (dr.Table.Columns.Contains(DBTableEntity.SqlString.Comments))
                 {
                     dr[DBTableEntity.SqlString.Comments] = sComment;
-                    dr[DBTableEntity.SqlString.NameCN] = arr[0];
-                    if (arr.Length > 1 && dr.Table.Columns.Contains(DBColumnEntity.SqlString.Extra))
+                    dr[DBTableEntity.SqlString.NameCN] = arr[0].Trim();
+                    if (arr.Length > 1)
                     {
-                        dr[DBTableEntity.SqlString.Extra] = arr[1];
+                        if (dr.Table.Columns.Contains(DBColumnEntity.SqlString.Extra))
+                        {
+                            dr[DBTableEntity.SqlString.Extra] = arr[1].Trim();
+                        }
                     }
                 }
             }
@@ -29,12 +32,14 @@ namespace Breezee.AutoSQLExecutor.Core
                 if (dr.Table.Columns.Contains(DBColumnEntity.SqlString.Comments))
                 {
                     dr[DBColumnEntity.SqlString.Comments] = sComment;
-                    dr[DBColumnEntity.SqlString.NameCN] = arr[0];
-                    if (arr.Length > 1 && dr.Table.Columns.Contains(DBColumnEntity.SqlString.Extra))
+                    dr[DBColumnEntity.SqlString.NameCN] = arr[0].Trim();
+                    if (arr.Length > 1)
                     {
-                        dr[DBColumnEntity.SqlString.Extra] = arr[1];
+                        if (dr.Table.Columns.Contains(DBColumnEntity.SqlString.Extra))
+                        {
+                            dr[DBColumnEntity.SqlString.Extra] = arr[1].Trim();
+                        }
                     }
-
                 }
             }            
         }

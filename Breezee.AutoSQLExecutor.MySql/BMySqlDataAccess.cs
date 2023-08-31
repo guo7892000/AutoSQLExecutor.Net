@@ -779,6 +779,9 @@ namespace Breezee.AutoSQLExecutor.MySql
 
         public override DataTable GetSqlSchemaTableColumns(List<string> listTableName, string sSchema = null)
         {
+            //因为Apache Doris不支持SUBSTRING_INDEX函数，所以SQL中不使用该函数，根据列备注来分拆
+            //SUBSTRING_INDEX(A.COLUMN_COMMENT,':',1) AS COLUMN_CN,
+            //SUBSTRING_INDEX(A.COLUMN_COMMENT, ':', -1) AS COLUMN_EXTRA,
             string sSql = @"SELECT A.TABLE_SCHEMA,
 			            A.TABLE_NAME,
 			            A.ORDINAL_POSITION,
@@ -792,8 +795,8 @@ namespace Breezee.AutoSQLExecutor.MySql
 			            A.NUMERIC_SCALE,
 			            A.COLUMN_TYPE,
 			            A.COLUMN_KEY,
-			            SUBSTRING_INDEX(A.COLUMN_COMMENT,':',1) AS COLUMN_CN,
-			            SUBSTRING_INDEX(A.COLUMN_COMMENT,':',-1) AS COLUMN_EXTRA,
+			            A.COLUMN_COMMENT AS COLUMN_CN,
+			            A.COLUMN_COMMENT AS COLUMN_EXTRA,
 			            B.TABLE_COMMENT
             FROM information_schema.`COLUMNS` A
             JOIN information_schema.`TABLES` B 
@@ -871,8 +874,9 @@ namespace Breezee.AutoSQLExecutor.MySql
                 dr[DBColumnEntity.SqlString.DataScale] = drS["NUMERIC_SCALE"];
                 dr[DBColumnEntity.SqlString.DataTypeFull] = drS["COLUMN_TYPE"];
                 dr[DBColumnEntity.SqlString.KeyType] = "PRI".Equals(drS["COLUMN_KEY"].ToString(), StringComparison.OrdinalIgnoreCase) ? "PK" : "";
-                dr[DBColumnEntity.SqlString.NameCN] = drS["COLUMN_CN"];
-                dr[DBColumnEntity.SqlString.Extra] = drS["COLUMN_EXTRA"];
+                DBSchemaCommon.SetComment(dr, drS["COLUMN_COMMENT"].ToString(), false);//设置列名称备注
+                //dr[DBColumnEntity.SqlString.NameCN] = drS["COLUMN_CN"];
+                //dr[DBColumnEntity.SqlString.Extra] = drS["COLUMN_EXTRA"];
 
                 dtReturn.Rows.Add(dr);
             }
