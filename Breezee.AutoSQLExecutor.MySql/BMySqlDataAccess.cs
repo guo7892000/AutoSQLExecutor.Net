@@ -866,8 +866,17 @@ namespace Breezee.AutoSQLExecutor.MySql
                 dr[DBColumnEntity.SqlString.Default] = drS["COLUMN_DEFAULT"];
                 dr[DBColumnEntity.SqlString.NotNull] = "NO".Equals(drS["IS_NULLABLE"].ToString(), StringComparison.OrdinalIgnoreCase) ? "1" : "";
                 dr[DBColumnEntity.SqlString.DataType] = drS["DATA_TYPE"];
-                dr[DBColumnEntity.SqlString.DataLength] = drS["CHARACTER_MAXIMUM_LENGTH"];
-                dr[DBColumnEntity.SqlString.DataPrecision] = drS["NUMERIC_PRECISION"];
+                string sPrecision = drS["NUMERIC_PRECISION"].ToString();
+                if (!string.IsNullOrEmpty(sPrecision))
+                {
+                    dr[DBColumnEntity.SqlString.DataLength] = sPrecision;
+                    dr[DBColumnEntity.SqlString.DataPrecision] = sPrecision;
+                }
+                else
+                {
+                    dr[DBColumnEntity.SqlString.DataLength] = drS["CHARACTER_MAXIMUM_LENGTH"];
+                    dr[DBColumnEntity.SqlString.DataPrecision] = drS["NUMERIC_PRECISION"];
+                }
                 dr[DBColumnEntity.SqlString.DataScale] = drS["NUMERIC_SCALE"];
                 dr[DBColumnEntity.SqlString.DataTypeFull] = drS["COLUMN_TYPE"];
                 dr[DBColumnEntity.SqlString.KeyType] = "PRI".Equals(drS["COLUMN_KEY"].ToString(), StringComparison.OrdinalIgnoreCase) ? "PK" : "";
@@ -879,9 +888,6 @@ namespace Breezee.AutoSQLExecutor.MySql
             return dtReturn;
         }
         #endregion
-
-
-
 
     }
 }

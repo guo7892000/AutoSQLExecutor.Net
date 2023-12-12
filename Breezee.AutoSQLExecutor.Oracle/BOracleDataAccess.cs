@@ -864,8 +864,17 @@ namespace Breezee.AutoSQLExecutor.Oracle
                 dr[DBColumnEntity.SqlString.Default] = drS["COLUMN_DEFAULT"];
                 dr[DBColumnEntity.SqlString.NotNull] = drS["IS_NULLABLE"].ToString().ToUpper().Equals("N") ? "1" : "";
                 dr[DBColumnEntity.SqlString.DataType] = drS["DATA_TYPE"];
-                dr[DBColumnEntity.SqlString.DataLength] = drS["CHARACTER_MAXIMUM_LENGTH"];
-                dr[DBColumnEntity.SqlString.DataPrecision] = drS["NUMERIC_PRECISION"];
+                string sPrecision = drS["NUMERIC_PRECISION"].ToString();
+                if (!string.IsNullOrEmpty(sPrecision))
+                {
+                    dr[DBColumnEntity.SqlString.DataLength] = sPrecision;
+                    dr[DBColumnEntity.SqlString.DataPrecision] = sPrecision;
+                }
+                else
+                {
+                    dr[DBColumnEntity.SqlString.DataLength] = drS["CHARACTER_MAXIMUM_LENGTH"];
+                    dr[DBColumnEntity.SqlString.DataPrecision] = drS["NUMERIC_PRECISION"];
+                }
                 dr[DBColumnEntity.SqlString.DataScale] = drS["NUMERIC_SCALE"];
                 dr[DBColumnEntity.SqlString.KeyType] = "1".Equals(drS["COLUMN_KEY"].ToString().ToUpper()) ?"PK":"";
                 DBSchemaCommon.SetComment(dr, drS["COLUMN_COMMENT"].ToString(), false);
