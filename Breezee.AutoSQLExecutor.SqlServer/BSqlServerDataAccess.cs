@@ -785,8 +785,8 @@ namespace Breezee.AutoSQLExecutor.SqlServer
                     A.NAME AS TABLE_NAME,
                     C.VALUE AS TABLE_COMMENT
             FROM    SYS.OBJECTS A
-                    JOIN SYS.SCHEMAS B ON A.SCHEMA_ID = B.SCHEMA_ID
-                    JOIN SYS.EXTENDED_PROPERTIES C ON C.MAJOR_ID=A.OBJECT_ID AND C.MINOR_ID=0
+            JOIN SYS.SCHEMAS B ON A.SCHEMA_ID = B.SCHEMA_ID
+            LEFT JOIN SYS.EXTENDED_PROPERTIES C ON C.MAJOR_ID=A.OBJECT_ID AND C.MINOR_ID=0
             WHERE   A.TYPE = 'U'
                     AND A.NAME = '#TABLE_NAME#'
                     AND B.NAME= '#TABLE_SCHEMA#'
