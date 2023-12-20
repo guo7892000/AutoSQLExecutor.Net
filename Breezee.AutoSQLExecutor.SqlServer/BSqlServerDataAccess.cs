@@ -8,8 +8,8 @@ using System.Data.Common;
 using System.Xml;
 using Breezee.AutoSQLExecutor.Core;
 using Breezee.Core.Interface;
-//using System.Data.SqlClient;   //net4引入此空间
-using Microsoft.Data.SqlClient;   //net6引入此空间
+using System.Data.SqlClient;   //net4引入此空间
+//using Microsoft.Data.SqlClient;   //net6引入此空间
 
 namespace Breezee.AutoSQLExecutor.SqlServer
 {
@@ -824,6 +824,7 @@ namespace Breezee.AutoSQLExecutor.SqlServer
         public override DataTable GetSqlSchemaTableColumns(List<string> listTableName, string sSchema = null)
         {
             string sSql = @"SELECT
+				S.NAME AS TABLE_SCHEMA ,
                 TABLE_NAME = D.NAME ,
                 TABLE_COMMENT = F.VALUE,
                 ORDINAL_POSITION = A.COLORDER,
@@ -841,14 +842,15 @@ namespace Breezee.AutoSQLExecutor.SqlServer
             FROM SYSCOLUMNS A
             LEFT JOIN SYSTYPES B
 	            ON A.XUSERTYPE = B.XUSERTYPE
-            INNER JOIN SYSOBJECTS D
-	            ON A.ID = D.ID  AND D.XTYPE = 'U' AND D.NAME <> 'DTPROPERTIES'
+            JOIN SYS.OBJECTS D
+	            ON A.ID = D.object_id  AND D.TYPE = 'U' AND D.NAME <> 'DTPROPERTIES'
+			JOIN SYS.SCHEMAS S ON D.SCHEMA_ID = S.SCHEMA_ID
             LEFT JOIN SYSCOMMENTS E
 	            ON A.CDEFAULT = E.ID
             LEFT JOIN SYS.EXTENDED_PROPERTIES G
 	            ON A.ID = G.MAJOR_ID AND A.COLID = G.MINOR_ID
             LEFT JOIN SYS.EXTENDED_PROPERTIES F
-	            ON D.ID = F.MAJOR_ID AND F.MINOR_ID = 0
+	            ON D.object_id = F.MAJOR_ID AND F.MINOR_ID = 0
             WHERE 1=1
              AND D.NAME = '#TABLE_NAME#'
              AND D.NAME IN (#TABLE_NAME_LIST:LS#)
@@ -902,7 +904,7 @@ namespace Breezee.AutoSQLExecutor.SqlServer
             foreach (DataRow drS in dtSource.Rows)
             {
                 DataRow dr = dtReturn.NewRow();
-                //dr[DBColumnEntity.SqlString.TableSchema] = drS["TABLE_SCHEMA"];//Schema跟数据库名称一样
+                dr[DBColumnEntity.SqlString.TableSchema] = drS["TABLE_SCHEMA"];//Schema跟数据库名称一样
                 dr[DBColumnEntity.SqlString.TableName] = drS["TABLE_NAME"];
                 dr[DBColumnEntity.SqlString.TableNameUpper] = drS["TABLE_NAME"].ToString().FirstLetterUpper();
                 dr[DBColumnEntity.SqlString.TableNameLower] = drS["TABLE_NAME"].ToString().FirstLetterUpper(false);
