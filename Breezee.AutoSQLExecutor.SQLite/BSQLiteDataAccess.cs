@@ -724,6 +724,7 @@ namespace Breezee.AutoSQLExecutor.SQLite
         #region 通过SQL语句获取数据库元数据信息
         public override DataTable GetSqlSchemaTables(string sTableName = null, string sSchema = null)
         {
+            //SQLite表名区分大小写
             IDictionary<string, string> dic = new Dictionary<string, string>();
             string sDBSql = "PRAGMA database_list;";
             DataTable dtDBList = QueryHadParamSqlData(sDBSql, dic);
@@ -746,10 +747,10 @@ namespace Breezee.AutoSQLExecutor.SQLite
                 }
                 sDBName = sSchema;
             }
-            //TYPE,NAME,TBL_NAME,ROOTPAGE,SQL 
+            //TYPE,NAME,TBL_NAME,ROOTPAGE,SQL：注这里的表名区分大小写，必须两边都转换为大写然后比较！！
             sSql = string.Format(@"SELECT NAME AS TABLE_NAME
                 FROM {0}.SQLITE_MASTER 
-                WHERE UPPER(TYPE)= 'TABLE' 
+                WHERE TYPE = 'table' 
                  AND UPPER(NAME)= '#TABLE_NAME#'
                 ", sDBName);
             //不支持备注信息和架构
@@ -782,6 +783,7 @@ namespace Breezee.AutoSQLExecutor.SQLite
 
         public override DataTable GetSqlSchemaTableColumns(List<string> listTableName, string sSchema = null)
         {
+            //SQLite的列名区分大小写
             DataTable dtReturn = DT_SchemaTableColumn;
             //当传空时，查询全部表的全部列
             if (listTableName.Count == 0)
@@ -817,7 +819,7 @@ namespace Breezee.AutoSQLExecutor.SQLite
                 dr[DBColumnEntity.SqlString.TableNameUpper] = dic[DBColumnEntity.SqlString.TableName].FirstLetterUpper();
                 dr[DBColumnEntity.SqlString.TableNameLower] = dic[DBColumnEntity.SqlString.TableName].FirstLetterUpper(false);
                 dr[DBColumnEntity.SqlString.SortNum] = drS["cid"];
-                dr[DBColumnEntity.SqlString.Name] = drS["name"];
+                dr[DBColumnEntity.SqlString.Name] = drS["name"]; //区分大小写，这里没转换为大写
                 dr[DBColumnEntity.SqlString.NameUpper] = drS["name"].ToString().FirstLetterUpper();
                 dr[DBColumnEntity.SqlString.NameLower] = drS["name"].ToString().FirstLetterUpper(false);
                 //dr[DBColumnEntity.SqlString.Comments] = drS["COLUMN_COMMENT"]; //不支持

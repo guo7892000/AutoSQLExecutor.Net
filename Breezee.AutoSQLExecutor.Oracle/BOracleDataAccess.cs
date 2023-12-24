@@ -708,16 +708,16 @@ namespace Breezee.AutoSQLExecutor.Oracle
         {
             if (string.IsNullOrEmpty(sSchema))
             {
-                sSchema = DbServer.UserName;
+                sSchema = DbServer.UserName; //TABLE_SCHEMA为登录的用户。登录的用户其创建的对象为其所有。
             }
-            //TABLE_SCHEMA为登录的用户。登录的用户其创建的对象为其所有
+            //注：即使创建表语句表名或字段名为小写，但Oracle自动会转换为大写
             string sSql = @"SELECT A.OWNER AS TABLE_SCHEMA, A.TABLE_NAME,B.COMMENTS AS TABLE_COMMENT,A.TABLESPACE_NAME
                     FROM ALL_TABLES A
-                    JOIN ALL_TAB_COMMENTS B
+                    LEFT JOIN ALL_TAB_COMMENTS B
                       ON A.TABLE_NAME = B.TABLE_NAME AND A.OWNER=B.OWNER
                     WHERE 1=1
-                    AND UPPER(A.TABLE_NAME) = '#TABLE_NAME#'
-                    and UPPER(A.OWNER) = '#TABLE_SCHEMA#'
+                    AND A.TABLE_NAME = '#TABLE_NAME#'
+                    AND A.OWNER = '#TABLE_SCHEMA#'
                 ";
 
             IDictionary<string, string> dic = new Dictionary<string, string>();
@@ -762,37 +762,38 @@ namespace Breezee.AutoSQLExecutor.Oracle
 
         public override DataTable GetSqlSchemaTableColumns(List<string> listTableName, string sSchema = null)
         {
+            //注：即使创建表语句表名或字段名为小写，但Oracle自动会转换为大写
             string sSql = @"SELECT A.OWNER AS TABLE_SCHEMA,
-                A.TABLE_NAME,
-                A.COLUMN_ID AS ORDINAL_POSITION,
-                A.COLUMN_NAME,
-                B.COMMENTS AS COLUMN_COMMENT,
-                A.DATA_TYPE,
-                A.DATA_LENGTH AS CHARACTER_MAXIMUM_LENGTH,
-                A.DATA_PRECISION AS NUMERIC_PRECISION,
-                A.DATA_SCALE AS NUMERIC_SCALE,
-                A.NULLABLE AS IS_NULLABLE,
-                A.DATA_DEFAULT AS COLUMN_DEFAULT,
-                (SELECT DECODE(BB.COLUMN_NAME,NULL,0,1)  
+                    A.TABLE_NAME,
+                    A.COLUMN_ID AS ORDINAL_POSITION,
+                    A.COLUMN_NAME,
+                    B.COMMENTS AS COLUMN_COMMENT,
+                    A.DATA_TYPE,
+                    A.DATA_LENGTH AS CHARACTER_MAXIMUM_LENGTH,
+                    A.DATA_PRECISION AS NUMERIC_PRECISION,
+                    A.DATA_SCALE AS NUMERIC_SCALE,
+                    A.NULLABLE AS IS_NULLABLE,
+                    A.DATA_DEFAULT AS COLUMN_DEFAULT,
+                    (SELECT DECODE(BB.COLUMN_NAME,NULL,0,1)  
                 FROM ALL_CONSTRAINTS AA
-                JOIN ALL_CONS_COLUMNS BB ON AA.CONSTRAINT_NAME=BB.CONSTRAINT_NAME
-                WHERE UPPER(AA.TABLE_NAME) = UPPER(A.TABLE_NAME)
-                        AND UPPER(BB.COLUMN_NAME) = UPPER(A.COLUMN_NAME)
+                LEFT JOIN ALL_CONS_COLUMNS BB ON AA.CONSTRAINT_NAME=BB.CONSTRAINT_NAME
+                WHERE AA.TABLE_NAME = A.TABLE_NAME
+                        AND BB.COLUMN_NAME = A.COLUMN_NAME
                         AND AA.OWNER=BB.OWNER AND AA.OWNER=A.OWNER
                 AND AA.CONSTRAINT_TYPE='P' AND ROWNUM=1) COLUMN_KEY,
                 C.COMMENTS AS TABLE_COMMENT,
                 A.OWNER AS TABLE_OWNER
             FROM ALL_TAB_COLS A
-            JOIN ALL_COL_COMMENTS B 
+            LEFT JOIN ALL_COL_COMMENTS B 
                 ON A.TABLE_NAME=B.TABLE_NAME AND A.COLUMN_NAME=B.COLUMN_NAME AND A.OWNER=B.OWNER
             JOIN ALL_TABLES T
                 ON A.TABLE_NAME = T.TABLE_NAME AND A.OWNER=T.OWNER  
-            JOIN ALL_TAB_COMMENTS C
+            LEFT JOIN ALL_TAB_COMMENTS C
                 ON A.TABLE_NAME = C.TABLE_NAME AND A.OWNER = C.OWNER
             WHERE 1=1
-            AND UPPER(A.TABLE_NAME) IN (#TABLE_NAME_LIST:LS#)
-            AND UPPER(A.TABLE_NAME) = '#TABLE_NAME#'
-            AND UPPER(A.OWNER) = '#TABLE_SCHEMA#'
+                AND A.TABLE_NAME IN (#TABLE_NAME_LIST:LS#)
+                AND A.TABLE_NAME = '#TABLE_NAME#'
+                AND A.OWNER = '#TABLE_SCHEMA#'
             ORDER BY A.TABLE_NAME,A.COLUMN_ID
             ";
 
@@ -814,16 +815,23 @@ namespace Breezee.AutoSQLExecutor.Oracle
             }
             else if (listTableName.Count < MaxInStringCount)
             {
-                dic["TABLE_NAME_LIST"] = listTableName;
+                //将所有表名转换为大写
+                List<string> listTableNameNew = new List<string>();
+                for (int i = 0; i < listTableName.Count; i++)
+                {
+                    listTableNameNew.Add(listTableName[i].ToUpper());
+                }
+                dic["TABLE_NAME_LIST"] = listTableNameNew;
                 return GetColumnTable(sSql, dic);
             }
             else
             {
+                //分段IN查询并合并
                 List<string> listTableNameNew = new List<string>();
                 DataTable dtReturn = DT_SchemaTableColumn;
                 for (int i = 0; i < listTableName.Count; i++)
                 {
-                    listTableNameNew.Add(listTableName[i]);
+                    listTableNameNew.Add(listTableName[i].ToUpper());
                     if (i % MaxInStringCount == 0)
                     {
                         dic["TABLE_NAME_LIST"] = listTableNameNew;
@@ -878,10 +886,6 @@ namespace Breezee.AutoSQLExecutor.Oracle
                 dr[DBColumnEntity.SqlString.DataScale] = drS["NUMERIC_SCALE"];
                 dr[DBColumnEntity.SqlString.KeyType] = "1".Equals(drS["COLUMN_KEY"].ToString().ToUpper()) ?"PK":"";
                 DBSchemaCommon.SetComment(dr, drS["COLUMN_COMMENT"].ToString(), false);
-
-                //dr[DBColumnEntity.SqlString.DataTypeFull] = drS["COLUMN_TYPE"];
-                //dr[DBColumnEntity.SqlString.NameCN] = drS["COLUMN_CN"];
-                //dr[DBColumnEntity.SqlString.Extra] = drS["COLUMN_EXTRA"];
                 dtReturn.Rows.Add(dr);
             }
             return dtReturn;

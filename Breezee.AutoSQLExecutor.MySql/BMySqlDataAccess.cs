@@ -743,8 +743,8 @@ namespace Breezee.AutoSQLExecutor.MySql
             if (string.IsNullOrEmpty(sSchema)) sSchema = DbServer.Database.ToLower();
             //TABLE_SCHEMA为数据库存名。TABLE_SCHEMA,TABLE_NAME,TABLE_COMMENT,`ENGINE`
             string sSql = @"SELECT TABLE_SCHEMA,TABLE_NAME,TABLE_COMMENT
-                    FROM INFORMATION_SCHEMA.`TABLES`
-                    WHERE 1=1 AND TABLE_TYPE = 'BASE TABLE'
+                    FROM information_schema.`TABLES`
+                    WHERE TABLE_TYPE = 'BASE TABLE'
                     AND TABLE_SCHEMA = '#TABLE_SCHEMA#'
                     AND TABLE_NAME = '#TABLE_NAME#'
             ";
@@ -779,6 +779,9 @@ namespace Breezee.AutoSQLExecutor.MySql
 
         public override DataTable GetSqlSchemaTableColumns(List<string> listTableName, string sSchema = null)
         {
+            //因为Apache Doris不支持SUBSTRING_INDEX函数，所以SQL中不使用该函数，根据列备注来分拆
+            //SUBSTRING_INDEX(A.COLUMN_COMMENT,':',1) AS COLUMN_CN,
+            //SUBSTRING_INDEX(A.COLUMN_COMMENT, ':', -1) AS COLUMN_EXTRA,
             string sSql = @"SELECT A.TABLE_SCHEMA,
 			            A.TABLE_NAME,
 			            A.ORDINAL_POSITION,
@@ -792,11 +795,11 @@ namespace Breezee.AutoSQLExecutor.MySql
 			            A.NUMERIC_SCALE,
 			            A.COLUMN_TYPE,
 			            A.COLUMN_KEY,
-			            SUBSTRING_INDEX(A.COLUMN_COMMENT,':',1) AS COLUMN_CN,
-			            SUBSTRING_INDEX(A.COLUMN_COMMENT,':',-1) AS COLUMN_EXTRA,
+			            A.COLUMN_COMMENT AS COLUMN_CN,
+			            A.COLUMN_COMMENT AS COLUMN_EXTRA,
 			            B.TABLE_COMMENT
             FROM information_schema.`COLUMNS` A
-            JOIN INFORMATION_SCHEMA.`TABLES` B 
+            JOIN information_schema.`TABLES` B 
                 ON A.TABLE_SCHEMA = B.TABLE_SCHEMA AND A.TABLE_NAME = B.TABLE_NAME AND B.TABLE_TYPE = 'BASE TABLE'
             WHERE 1=1
                 AND A.TABLE_NAME = '#TABLE_NAME#'
@@ -853,6 +856,7 @@ namespace Breezee.AutoSQLExecutor.MySql
             foreach (DataRow drS in dtSource.Rows)
             {
                 DataRow dr = dtReturn.NewRow();
+                
                 dr[DBColumnEntity.SqlString.TableSchema] = drS["TABLE_SCHEMA"];//Schema跟数据库名称一样
                 dr[DBColumnEntity.SqlString.TableName] = drS["TABLE_NAME"];
                 dr[DBColumnEntity.SqlString.TableNameUpper] = drS["TABLE_NAME"].ToString().FirstLetterUpper();
@@ -880,14 +884,18 @@ namespace Breezee.AutoSQLExecutor.MySql
                 dr[DBColumnEntity.SqlString.DataScale] = drS["NUMERIC_SCALE"];
                 dr[DBColumnEntity.SqlString.DataTypeFull] = drS["COLUMN_TYPE"];
                 dr[DBColumnEntity.SqlString.KeyType] = "PRI".Equals(drS["COLUMN_KEY"].ToString(), StringComparison.OrdinalIgnoreCase) ? "PK" : "";
-                dr[DBColumnEntity.SqlString.NameCN] = drS["COLUMN_CN"];
-                dr[DBColumnEntity.SqlString.Extra] = drS["COLUMN_EXTRA"];
+                DBSchemaCommon.SetComment(dr, drS["COLUMN_COMMENT"].ToString(), false);//设置列名称备注
+                //dr[DBColumnEntity.SqlString.NameCN] = drS["COLUMN_CN"];
+                //dr[DBColumnEntity.SqlString.Extra] = drS["COLUMN_EXTRA"];
 
                 dtReturn.Rows.Add(dr);
             }
             return dtReturn;
         }
         #endregion
+
+
+
 
     }
 }

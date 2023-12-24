@@ -8,8 +8,8 @@ using System.Data.Common;
 using System.Xml;
 using Breezee.AutoSQLExecutor.Core;
 using Breezee.Core.Interface;
-using System.Data.SqlClient;   //net4引入此空间
-//using Microsoft.Data.SqlClient;   //net6引入此空间
+//using System.Data.SqlClient;   //net4引入此空间
+using Microsoft.Data.SqlClient;   //net6引入此空间
 
 namespace Breezee.AutoSQLExecutor.SqlServer
 {
@@ -781,6 +781,7 @@ namespace Breezee.AutoSQLExecutor.SqlServer
                 }
             }           
 
+            //SqlServer表名区分大小写
             string sSql = @"SELECT  B.NAME AS TABLE_SCHEMA ,
                     A.NAME AS TABLE_NAME,
                     C.VALUE AS TABLE_COMMENT
@@ -795,7 +796,7 @@ namespace Breezee.AutoSQLExecutor.SqlServer
 
             dic = new Dictionary<string, string>();
             dic["TABLE_SCHEMA"] = sSchema;
-            dic["TABLE_NAME"] = sTableName;
+            dic["TABLE_NAME"] = sTableName;//区分大小写，这里没转换为大写
             DataTable dtSource = QueryAutoParamSqlData(sSql, dic);
             DataTable dtReturn = DT_SchemaTable;
             foreach (DataRow drS in dtSource.Rows)
@@ -823,6 +824,7 @@ namespace Breezee.AutoSQLExecutor.SqlServer
 
         public override DataTable GetSqlSchemaTableColumns(List<string> listTableName, string sSchema = null)
         {
+            //SqlServer的字段名区分大小写
             string sSql = @"SELECT
 				S.NAME AS TABLE_SCHEMA ,
                 TABLE_NAME = D.NAME ,
@@ -911,7 +913,7 @@ namespace Breezee.AutoSQLExecutor.SqlServer
                 DBSchemaCommon.SetComment(dr, drS["TABLE_COMMENT"].ToString());
 
                 dr[DBColumnEntity.SqlString.SortNum] = drS["ORDINAL_POSITION"];
-                dr[DBColumnEntity.SqlString.Name] = drS["COLUMN_NAME"];
+                dr[DBColumnEntity.SqlString.Name] = drS["COLUMN_NAME"];//区分大小写，这里没转换为大写
                 dr[DBColumnEntity.SqlString.NameUpper] = drS["COLUMN_NAME"].ToString().FirstLetterUpper();
                 dr[DBColumnEntity.SqlString.NameLower] = drS["COLUMN_NAME"].ToString().FirstLetterUpper(false);
                 dr[DBColumnEntity.SqlString.Default] = drS["COLUMN_DEFAULT"];
