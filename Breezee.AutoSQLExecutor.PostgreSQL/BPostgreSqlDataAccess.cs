@@ -783,6 +783,7 @@ namespace Breezee.AutoSQLExecutor.PostgreSQL
         #region 通过SQL语句获取数据库元数据信息
         public override DataTable GetSqlSchemaTables(string sTableName = null, string sSchema = null)
         {
+            //PostgreSql表名区分大小写
             IDictionary<string, string> dic = new Dictionary<string, string>();
 
             //SCHEMANAME一般为public。tablename,SCHEMANAME,TABLENAME,TABLEOWNER,TABLESPACE,HASINDEXES,HASRULES,HASTRIGGERS,ROWSECURITY
@@ -830,6 +831,9 @@ namespace Breezee.AutoSQLExecutor.PostgreSQL
 
         public override DataTable GetSqlSchemaTableColumns(List<string> listTableName, string sSchema = null)
         {
+            //移除所有表名为空的
+            listTableName.RemoveAll(t => string.IsNullOrEmpty(t));
+            //PostgreSql的字段名区分大小写
             string sSql = @"SELECT A.TABLE_NAME,
 				A.TABLE_SCHEMA,
 				A.ORDINAL_POSITION,

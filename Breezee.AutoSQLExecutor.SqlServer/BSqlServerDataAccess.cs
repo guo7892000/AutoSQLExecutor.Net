@@ -824,6 +824,8 @@ namespace Breezee.AutoSQLExecutor.SqlServer
 
         public override DataTable GetSqlSchemaTableColumns(List<string> listTableName, string sSchema = null)
         {
+            //移除所有表名为空的
+            listTableName.RemoveAll(t => string.IsNullOrEmpty(t));
             //SqlServer的字段名区分大小写
             string sSql = @"SELECT
 				S.NAME AS TABLE_SCHEMA ,

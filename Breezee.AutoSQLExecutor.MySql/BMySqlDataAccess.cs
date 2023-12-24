@@ -779,6 +779,8 @@ namespace Breezee.AutoSQLExecutor.MySql
 
         public override DataTable GetSqlSchemaTableColumns(List<string> listTableName, string sSchema = null)
         {
+            //移除所有表名为空的
+            listTableName.RemoveAll(t => string.IsNullOrEmpty(t));
             //因为Apache Doris不支持SUBSTRING_INDEX函数，所以SQL中不使用该函数，根据列备注来分拆
             //SUBSTRING_INDEX(A.COLUMN_COMMENT,':',1) AS COLUMN_CN,
             //SUBSTRING_INDEX(A.COLUMN_COMMENT, ':', -1) AS COLUMN_EXTRA,

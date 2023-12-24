@@ -785,6 +785,8 @@ namespace Breezee.AutoSQLExecutor.SQLite
         {
             //SQLite的列名区分大小写
             DataTable dtReturn = DT_SchemaTableColumn;
+            //移除所有表名为空的
+            listTableName.RemoveAll(t => string.IsNullOrEmpty(t));
             //当传空时，查询全部表的全部列
             if (listTableName.Count == 0)
             {

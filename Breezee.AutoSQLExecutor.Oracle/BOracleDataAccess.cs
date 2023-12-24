@@ -762,6 +762,8 @@ namespace Breezee.AutoSQLExecutor.Oracle
 
         public override DataTable GetSqlSchemaTableColumns(List<string> listTableName, string sSchema = null)
         {
+            //移除所有表名为空的
+            listTableName.RemoveAll(t => string.IsNullOrEmpty(t));
             //注：即使创建表语句表名或字段名为小写，但Oracle自动会转换为大写
             string sSql = @"SELECT A.OWNER AS TABLE_SCHEMA,
                     A.TABLE_NAME,
