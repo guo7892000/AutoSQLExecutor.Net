@@ -143,8 +143,18 @@ namespace Breezee.AutoSQLExecutor.Core
                 dr[SqlString.SortNum] = entity.SortNum;
                 dr[SqlString.Default] = entity.Default;
                 dr[SqlString.NotNull] = entity.NotNull;
-                dr[SqlString.KeyType] = entity.KeyType;
-
+                if(entity.KeyType == DBColumnKeyType.PK)
+                {
+                    dr[SqlString.KeyType] = "PK";
+                }
+                else if (entity.KeyType == DBColumnKeyType.FK)
+                {
+                    dr[SqlString.KeyType] = "FK";
+                }
+                else
+                {
+                    dr[SqlString.KeyType] = "";
+                }
                 dr[SqlString.Comments] = entity.Comments;  
                 dr[SqlString.Extra] = entity.Extra;
 
