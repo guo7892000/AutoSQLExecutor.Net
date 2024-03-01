@@ -33,7 +33,7 @@ namespace Breezee.AutoSQLExecutor.Core
                             else
                             {
                                 int iExtStart = sComment.IndexOf(sNext);
-                                dr[DBTableEntity.SqlString.Extra] = sComment.Substring(iExtStart);
+                                dr[DBTableEntity.SqlString.Extra] = sComment.Substring(iExtStart).Trim();
                             }
                         }
                     }
@@ -58,7 +58,7 @@ namespace Breezee.AutoSQLExecutor.Core
                             else
                             {
                                 int iExtStart = sComment.IndexOf(sNext);
-                                dr[DBColumnEntity.SqlString.Extra] = sComment.Substring(iExtStart);
+                                dr[DBColumnEntity.SqlString.Extra] = sComment.Substring(iExtStart).Trim();
                             }
                         }
                     }

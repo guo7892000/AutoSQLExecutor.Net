@@ -52,7 +52,15 @@ namespace Breezee.AutoSQLExecutor.Core
             entity.TableComments = dr[SqlString.TableComments].ToString();
             entity.TableExtra = dr[SqlString.TableExtra].ToString();
 
-            entity.SortNum = int.Parse(dr[SqlString.SortNum].ToString());
+            int iSortNum;
+            if(int.TryParse(dr[SqlString.SortNum].ToString(), out iSortNum))
+            {
+                entity.SortNum = iSortNum;
+            }
+            else
+            {
+                entity.SortNum = 9999;
+            }
             entity.Name = dr[SqlString.Name].ToString();
             entity.NameUpper = dr[SqlString.Name].ToString().FirstLetterUpper();
             entity.NameLower = dr[SqlString.Name].ToString().FirstLetterUpper(false);
