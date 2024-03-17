@@ -99,6 +99,7 @@ namespace Breezee.AutoSQLExecutor.SQLite
 
                 }
             }
+            DbServerInfo.ResetConnKey(server);
             return server;
         }
         #endregion

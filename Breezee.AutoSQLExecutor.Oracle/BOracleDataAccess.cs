@@ -9,6 +9,8 @@ using System.Xml;
 using Breezee.AutoSQLExecutor.Core;
 using Breezee.Core.Interface;
 using Oracle.ManagedDataAccess.Client;
+using System.Text.RegularExpressions;
+using org.breezee.MyPeachNet;
 
 namespace Breezee.AutoSQLExecutor.Oracle
 {
@@ -98,7 +100,7 @@ namespace Breezee.AutoSQLExecutor.Oracle
                 else if (item.Key.Equals("user id"))
                 {
                     server.UserName = item.Value;
-                    server.SchemaName= item.Value.ToUpper();
+                    server.SchemaName = item.Value.ToUpper();
                 }
                 else if (item.Key.Equals("password"))
                 {
@@ -109,6 +111,7 @@ namespace Breezee.AutoSQLExecutor.Oracle
 
                 }
             }
+            DbServerInfo.ResetConnKey(server);
             return server;
         }
         #endregion
@@ -140,7 +143,7 @@ namespace Breezee.AutoSQLExecutor.Oracle
                 //构造命令
                 OracleCommand sqlCommon = new OracleCommand(sHadParaSql, (OracleConnection)conn);
                 if (dbTran != null)
-                { 
+                {
                     sqlCommon.Transaction = (OracleTransaction)dbTran;
                 }
 
@@ -258,7 +261,7 @@ namespace Breezee.AutoSQLExecutor.Oracle
                 strDelete.Append("DELETE FROM " + dt.TableName);
                 //表列信息表
                 DataTable dtTableInfo = GetSchemaTableColumns(dt.TableName);
-                DataRow[] dcPKList = dtTableInfo.Select(DBColumnEntity.SqlString.KeyType+"='PK'");
+                DataRow[] dcPKList = dtTableInfo.Select(DBColumnEntity.SqlString.KeyType + "='PK'");
                 bool isFirstUpdateColumnFind = false;
                 string sDouHao = "";
                 string sUpdateDouHao = ",";
@@ -369,7 +372,7 @@ namespace Breezee.AutoSQLExecutor.Oracle
                 //构造命令参数
                 foreach (DataColumn dc in dt.Columns)
                 {
-                    DataRow[] drCol = dtTableInfo.Select(DBColumnEntity.SqlString.Name+"='" + dc.ColumnName + "'");
+                    DataRow[] drCol = dtTableInfo.Select(DBColumnEntity.SqlString.Name + "='" + dc.ColumnName + "'");
                     Int32 iLen = 0;
                     if (!string.IsNullOrEmpty(drCol[0][DBColumnEntity.SqlString.DataLength].ToString()))
                     {
@@ -388,7 +391,7 @@ namespace Breezee.AutoSQLExecutor.Oracle
                 }
                 //更新表
                 adapter.Update(dt);
-                
+
                 return dt;
             }
             catch (Exception ex)
@@ -492,7 +495,7 @@ namespace Breezee.AutoSQLExecutor.Oracle
         {
             try
             {
-                string  sReturnCode = "";
+                string sReturnCode = "";
 
                 var ps = new StoreProcedureSqlBuilder(this, "P_COMM_GET_FORM_CODE");
                 ps.ListPara.Add(new ProcedureParam(1, "V_ORG_ID", strOrgID, SqlDbType.VarChar, 50));
@@ -664,7 +667,7 @@ namespace Breezee.AutoSQLExecutor.Oracle
                 DataTable dtPK = QueryAutoParamSqlData(sSql, dic);
                 bool isPKOK = false;
 
-                DataTable dtSource = con.GetSchema(DBSchemaString.Columns, new string[] { null, sTableName,null  });//使用通用的获取架构方法
+                DataTable dtSource = con.GetSchema(DBSchemaString.Columns, new string[] { null, sTableName, null });//使用通用的获取架构方法
                 DataTable dtReturn = DT_SchemaTableColumn;
                 foreach (DataRow drS in dtSource.Rows)
                 {
@@ -762,27 +765,29 @@ namespace Breezee.AutoSQLExecutor.Oracle
 
         public override DataTable GetSqlSchemaTableColumns(List<string> listTableName, string sSchema = null)
         {
-            //移除所有表名为空的
-            listTableName.RemoveAll(t => string.IsNullOrEmpty(t));
-            //注：即使创建表语句表名或字段名为小写，但Oracle自动会转换为大写
+
+            /* 默认值不能直接取all_tab_columns.data_default (类型为LONG)，要用以下SQL取：
+             *  CASE WHEN DEFAULT_LENGTH IS NULL THEN '' ELSE
+             *  extractvalue(dbms_xmlgen.getxmltype( 'select data_default from user_tab_columns where table_name = ''' || A.table_name || ''' and column_name = ''' || A.column_name || '''' ), '//text()' )
+             *       END AS COLUMN_DEFAULT,
+             *  以上取法会导致查询很慢，且如默认值有&符号会报错。也可以改为下面方式：
+             *  CASE WHEN DEFAULT_LENGTH IS NULL THEN '' ELSE
+             *  dbms_xmlgen.getxmltype( 'select data_default from user_tab_columns where table_name = ''' || A.table_name || ''' and column_name = ''' || A.column_name || '''' ).getstringval()
+             *       END AS COLUMN_DEFAULT,
+             *  虽然不报错了，默认值字符需要进一步截取，但速度还是很慢，所以最终决定先不查默认值，等后面有需要再单独查默认值。 by BreezeeHui 2024-3-16    
+             */
             string sSql = @"SELECT A.OWNER AS TABLE_SCHEMA,
-                    A.TABLE_NAME,
-                    A.COLUMN_ID AS ORDINAL_POSITION,
-                    A.COLUMN_NAME,
-                    B.COMMENTS AS COLUMN_COMMENT,
-                    A.DATA_TYPE,
-                    A.DATA_LENGTH AS CHARACTER_MAXIMUM_LENGTH,
-                    A.DATA_PRECISION AS NUMERIC_PRECISION,
-                    A.DATA_SCALE AS NUMERIC_SCALE,
-                    A.NULLABLE AS IS_NULLABLE,
-                    A.DATA_DEFAULT AS COLUMN_DEFAULT,
-                    (SELECT DECODE(BB.COLUMN_NAME,NULL,0,1)  
-                FROM ALL_CONSTRAINTS AA
-                LEFT JOIN ALL_CONS_COLUMNS BB ON AA.CONSTRAINT_NAME=BB.CONSTRAINT_NAME
-                WHERE AA.TABLE_NAME = A.TABLE_NAME
-                        AND BB.COLUMN_NAME = A.COLUMN_NAME
-                        AND AA.OWNER=BB.OWNER AND AA.OWNER=A.OWNER
-                AND AA.CONSTRAINT_TYPE='P' AND ROWNUM=1) COLUMN_KEY,
+                A.TABLE_NAME,
+                A.COLUMN_ID AS ORDINAL_POSITION,
+                A.COLUMN_NAME,
+                B.COMMENTS AS COLUMN_COMMENT,
+                A.DATA_TYPE,
+                A.DATA_LENGTH AS CHARACTER_MAXIMUM_LENGTH,
+                A.DATA_PRECISION AS NUMERIC_PRECISION,
+                A.DATA_SCALE AS NUMERIC_SCALE,
+                A.NULLABLE AS IS_NULLABLE,
+                '' AS COLUMN_DEFAULT,
+                DECODE(PK.COLUMN_NAME,NULL,0,1)  AS COLUMN_KEY,
                 C.COMMENTS AS TABLE_COMMENT,
                 A.OWNER AS TABLE_OWNER
             FROM ALL_TAB_COLS A
@@ -792,13 +797,21 @@ namespace Breezee.AutoSQLExecutor.Oracle
                 ON A.TABLE_NAME = T.TABLE_NAME AND A.OWNER=T.OWNER  
             LEFT JOIN ALL_TAB_COMMENTS C
                 ON A.TABLE_NAME = C.TABLE_NAME AND A.OWNER = C.OWNER
+            LEFT JOIN (
+                SELECT AA.OWNER,AA.TABLE_NAME,BB.COLUMN_NAME 
+                FROM ALL_CONSTRAINTS AA
+                LEFT JOIN ALL_CONS_COLUMNS BB ON AA.CONSTRAINT_NAME=BB.CONSTRAINT_NAME AND AA.OWNER=BB.OWNER
+                WHERE AA.CONSTRAINT_TYPE='P' 
+                ) PK ON PK.TABLE_NAME = A.TABLE_NAME AND PK.COLUMN_NAME = A.COLUMN_NAME AND PK.OWNER=A.OWNER    
             WHERE 1=1
                 AND A.TABLE_NAME IN (#TABLE_NAME_LIST:LS#)
                 AND A.TABLE_NAME = '#TABLE_NAME#'
                 AND A.OWNER = '#TABLE_SCHEMA#'
             ORDER BY A.TABLE_NAME,A.COLUMN_ID
             ";
-
+            //移除所有表名为空的
+            listTableName.RemoveAll(t => string.IsNullOrEmpty(t));
+            /*注：即使创建表语句表名或字段名为小写，但Oracle自动会转换为大写*/
             IDictionary<string, object> dic = new Dictionary<string, object>();
             if (string.IsNullOrEmpty(sSchema))
             {
@@ -810,7 +823,7 @@ namespace Breezee.AutoSQLExecutor.Oracle
             {
                 return GetColumnTable(sSql, dic);
             }
-            else if(listTableName.Count == 1)
+            else if (listTableName.Count == 1)
             {
                 dic["TABLE_NAME"] = listTableName[0].ToUpper();
                 return GetColumnTable(sSql, dic);
@@ -871,7 +884,7 @@ namespace Breezee.AutoSQLExecutor.Oracle
                 dr[DBColumnEntity.SqlString.NameUpper] = drS["COLUMN_NAME"].ToString().FirstLetterUpper();
                 dr[DBColumnEntity.SqlString.NameLower] = drS["COLUMN_NAME"].ToString().FirstLetterUpper(false);
                 dr[DBColumnEntity.SqlString.Comments] = drS["COLUMN_COMMENT"];
-                dr[DBColumnEntity.SqlString.Default] = drS["COLUMN_DEFAULT"];
+                dr[DBColumnEntity.SqlString.Default] = drS["COLUMN_DEFAULT"].ToString();
                 dr[DBColumnEntity.SqlString.NotNull] = drS["IS_NULLABLE"].ToString().ToUpper().Equals("N") ? "1" : "";
                 dr[DBColumnEntity.SqlString.DataType] = drS["DATA_TYPE"];
                 string sPrecision = drS["NUMERIC_PRECISION"].ToString();
@@ -886,11 +899,125 @@ namespace Breezee.AutoSQLExecutor.Oracle
                     dr[DBColumnEntity.SqlString.DataPrecision] = drS["NUMERIC_PRECISION"];
                 }
                 dr[DBColumnEntity.SqlString.DataScale] = drS["NUMERIC_SCALE"];
-                dr[DBColumnEntity.SqlString.KeyType] = "1".Equals(drS["COLUMN_KEY"].ToString().ToUpper()) ?"PK":"";
+                dr[DBColumnEntity.SqlString.KeyType] = "1".Equals(drS["COLUMN_KEY"].ToString().ToUpper()) ? "PK" : "";
                 DBSchemaCommon.SetComment(dr, drS["COLUMN_COMMENT"].ToString(), false);
                 dtReturn.Rows.Add(dr);
             }
             return dtReturn;
+        }
+
+        /// <summary>
+        /// 查询表字段默认值
+        /// </summary>
+        /// <param name="listTableName"></param>
+        /// <param name="sSchema"></param>
+        /// <param name="sSql"></param>
+        /// <returns></returns>
+        public override DataTable GetSqlTableColumnsDefaultValue(List<string> listTableName, string sSchema = null)
+        {
+            //当默认值中有&号时，如'11 & 22',会报错而进入以下代码。
+            /* 下面为SQL：dbms_xmlgen.getxmltype(xxSql).getStringVal()得到的数据示例：
+             *   "<ROWSET><ROW><DATA_DEFAULT>sys_guid() </DATA_DEFAULT></ROW></ROWSET>"
+             *   "<ROWSET> <ROW> <DATA_DEFAULT>'CHIAN'</DATA_DEFAULT></ROW></ROWSET>"
+             *   "<ROWSET> <ROW>  <DATA_DEFAULT>2 </DATA_DEFAULT> </ROW></ROWSET>"
+             *   "<ROWSET> <ROW>  <DATA_DEFAULT>'11 & 22'</DATA_DEFAULT> </ROW></ROWSET>"
+             */
+            string sSql = @"SELECT A.OWNER AS TABLE_SCHEMA,
+    A.TABLE_NAME,
+    A.COLUMN_NAME,
+    dbms_xmlgen.getxmltype('select data_default from user_tab_columns where table_name = ''' || A.table_name || ''' and column_name = ''' || A.column_name || '''' ).getstringval() AS COLUMN_DEFAULT
+FROM ALL_TAB_COLS A   
+WHERE 1=1
+      AND A.TABLE_NAME IN (#TABLE_NAME_LIST:LS#)
+      AND A.TABLE_NAME = '#TABLE_NAME#'
+      AND A.OWNER = '#TABLE_SCHEMA#'
+      AND DEFAULT_LENGTH > 0
+            ";
+            //移除所有表名为空的
+            listTableName.RemoveAll(t => string.IsNullOrEmpty(t));
+            DataTable dtSource;
+            /*注：即使创建表语句表名或字段名为小写，但Oracle自动会转换为大写*/
+            IDictionary<string, object> dic = new Dictionary<string, object>();
+            if (string.IsNullOrEmpty(sSchema))
+            {
+                sSchema = DbServer.UserName.ToUpper(); //注：oracle中只能查自己用户下的所有表。不加该条件会把系统表都会查出来
+            }
+            dic["TABLE_SCHEMA"] = sSchema;
+
+            if (listTableName.Count == 0)
+            {
+                dtSource = GetColumnDefault(sSql, dic);
+            }
+            else if (listTableName.Count == 1)
+            {
+                dic["TABLE_NAME"] = listTableName[0].ToUpper();
+                dtSource = GetColumnDefault(sSql, dic);
+            }
+            else if (listTableName.Count < MaxInStringCount)
+            {
+                //将所有表名转换为大写
+                List<string> listTableNameNew = new List<string>();
+                for (int i = 0; i < listTableName.Count; i++)
+                {
+                    listTableNameNew.Add(listTableName[i].ToUpper());
+                }
+                dic["TABLE_NAME_LIST"] = listTableNameNew;
+                dtSource = GetColumnDefault(sSql, dic);
+            }
+            else
+            {
+                //分段IN查询并合并
+                List<string> listTableNameNew = new List<string>();
+                DataTable dtReturn = DT_SchemaTableColumn;
+                for (int i = 0; i < listTableName.Count; i++)
+                {
+                    listTableNameNew.Add(listTableName[i].ToUpper());
+                    if (i % MaxInStringCount == 0)
+                    {
+                        dic["TABLE_NAME_LIST"] = listTableNameNew;
+                        DataTable dtQuery = GetColumnDefault(sSql, dic);
+                        dtReturn.CopyExistColumnData(dtQuery);
+                        listTableNameNew.Clear();
+                    }
+                }
+                if (listTableNameNew.Count > 0)
+                {
+                    dic["TABLE_NAME_LIST"] = listTableNameNew;
+                    DataTable dtQuery = GetColumnDefault(sSql, dic);
+                    dtReturn.CopyExistColumnData(dtQuery);
+                }
+                dtSource = dtReturn;
+            }
+
+            foreach (DataRow drS in dtSource.Rows)
+            {
+                string sDefaultXml = drS["COLUMN_DEFAULT"].ToString();
+                //默认值的字符截取处理
+                string sBegin = "<DATA_DEFAULT>";
+                string sEnd = "</DATA_DEFAULT>";
+                int iStart = sDefaultXml.IndexOf(sBegin);
+                int iEnd = sDefaultXml.IndexOf(sEnd);
+                string sDefault = string.Empty;
+                if (iStart > 0)
+                {
+                    sDefault = sDefaultXml.Substring(iStart + sBegin.Length, iEnd - iStart - sBegin.Length).Trim();
+                }
+                drS[DBColumnEntity.SqlString.Default] = sDefault;
+            }
+            return dtSource;
+        }
+
+        /// <summary>
+        /// 查询列的默认值信息
+        /// </summary>
+        /// <param name="listTableName"></param>
+        /// <param name="sSchema"></param>
+        /// <param name="sSql"></param>
+        /// <returns></returns>
+        private DataTable GetColumnDefault(string sSql, IDictionary<string, object> dic)
+        {
+            DataTable dtSource = QueryAutoParamSqlData(sSql, dic);
+            return dtSource;
         }
         #endregion
     }

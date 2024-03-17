@@ -1298,7 +1298,25 @@ namespace Breezee.AutoSQLExecutor.Core
         /// <returns></returns>
         public abstract DataTable GetSqlSchemaTableColumns(string sTableName, string sSchema = null);
 
+        /// <summary>
+        /// 【抽象方法】获取表清单中的所有列信息
+        /// </summary>
+        /// <param name="listTableName"></param>
+        /// <param name="sSchema"></param>
+        /// <returns></returns>
         public abstract DataTable GetSqlSchemaTableColumns(List<string> listTableName, string sSchema = null);
+
+        /// <summary>
+        /// 【虚方法】获取表清单中的所有列默认值信息
+        /// 注：这个只有Oracle比较特殊才需要单独获取，因为如其要查询中获取，速度会非常慢。
+        /// </summary>
+        /// <param name="listTableName"></param>
+        /// <param name="sSchema"></param>
+        /// <returns></returns>
+        public virtual DataTable GetSqlTableColumnsDefaultValue(List<string> listTableName, string sSchema = null)
+        {
+            return new DataTable();
+        }
         #endregion
 
         private static void SetParamType(object item, FuncParam paramNew)

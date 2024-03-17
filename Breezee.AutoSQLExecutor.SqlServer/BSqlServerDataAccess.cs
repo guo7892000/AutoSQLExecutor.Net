@@ -95,6 +95,7 @@ namespace Breezee.AutoSQLExecutor.SqlServer
                     
                 }
             }
+            DbServerInfo.ResetConnKey(server);
             return server;
         }
         #endregion
@@ -834,8 +835,7 @@ namespace Breezee.AutoSQLExecutor.SqlServer
                 ORDINAL_POSITION = A.COLORDER,
                 COLUMN_NAME = A.NAME,
                 IS_IDENTITY = case when COLUMNPROPERTY(a.id, a.name, 'IsIdentity')= 1 then '1'else '' end,
-                COLUMN_KEY = CASE WHEN EXISTS(SELECT 1 FROM SYSOBJECTS WHERE XTYPE = 'PK' AND PARENT_OBJ = A.ID AND NAME IN (
-                           SELECT NAME FROM SYSINDEXES WHERE INDID IN(SELECT INDID FROM SYSINDEXKEYS WHERE ID = A.ID AND COLID = A.COLID))) THEN 'PK' ELSE '' END,
+				COLUMN_KEY = CASE WHEN PKC.PARENT_OBJ is null then '' else 'PK' END,
                 DATA_TYPE = B.NAME,
                 CHARACTER_MAXIMUM_LENGTH = A.LENGTH,
                 NUMERIC_PRECISION = COLUMNPROPERTY(A.ID, A.NAME, 'PRECISION'),
@@ -855,6 +855,14 @@ namespace Breezee.AutoSQLExecutor.SqlServer
 	            ON A.ID = G.MAJOR_ID AND A.COLID = G.MINOR_ID
             LEFT JOIN SYS.EXTENDED_PROPERTIES F
 	            ON D.object_id = F.MAJOR_ID AND F.MINOR_ID = 0
+			LEFT JOIN (SELECT OB.PARENT_OBJ,IK.ID,IK.COLID 
+					FROM SYSOBJECTS OB 
+					JOIN SYSINDEXES ID
+						ON OB.NAME = ID.NAME
+					JOIN SYSINDEXKEYS IK
+						ON IK.INDID = ID.INDID 
+					WHERE OB.XTYPE = 'PK' 
+					) PKC ON PKC.PARENT_OBJ = A.ID AND PKC.ID = A.ID AND PKC.COLID = A.COLID
             WHERE 1=1
              AND D.NAME = '#TABLE_NAME#'
              AND D.NAME IN (#TABLE_NAME_LIST:LS#)

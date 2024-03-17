@@ -111,6 +111,7 @@ namespace Breezee.AutoSQLExecutor.PostgreSQL
 
                 }
             }
+            DbServerInfo.ResetConnKey(server);
             return server;
         }
         #endregion

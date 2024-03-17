@@ -108,6 +108,7 @@ namespace Breezee.AutoSQLExecutor.MySql
 
                 }
             }
+            DbServerInfo.ResetConnKey(server);
             return server;
         }
         #endregion
