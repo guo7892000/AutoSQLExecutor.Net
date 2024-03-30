@@ -13,27 +13,27 @@ namespace Breezee.AutoSQLExecutor.Core
         {
             if (string.IsNullOrEmpty(sComment)) return;
             char[] charSplits = new char[] { ':', '：', ' ', '\r' };
-            string[] arr = sComment.Split(charSplits);
+            string[] arr = sComment.Split(charSplits, StringSplitOptions.RemoveEmptyEntries);
             if (isTable)
             {
                 if (dr.Table.Columns.Contains(DBTableEntity.SqlString.Comments))
                 {
                     dr[DBTableEntity.SqlString.Comments] = sComment.TrimEnd(charSplits);
-                    dr[DBTableEntity.SqlString.NameCN] = arr[0].Trim();
+                    string sTableName = arr[0].Trim();
+                    dr[DBTableEntity.SqlString.NameCN] = sTableName;
                     if (arr.Length > 1)
                     {
                         if (dr.Table.Columns.Contains(DBTableEntity.SqlString.Extra))
                         {
-                            //从第二个数组字符开始截取
-                            string sNext = arr[1];
-                            if (string.IsNullOrEmpty(sNext))
+                            foreach (string sExt in arr)
                             {
-                                dr[DBTableEntity.SqlString.Extra] = sNext;
-                            }
-                            else
-                            {
-                                int iExtStart = sComment.IndexOf(sNext);
-                                dr[DBTableEntity.SqlString.Extra] = sComment.Substring(iExtStart).Trim();
+                                if (!sTableName.Equals(sExt))
+                                {
+                                    //只有值跟表名不一样时，才开始截取字符
+                                    int iExtStart = sComment.IndexOf(sExt);
+                                    dr[DBTableEntity.SqlString.Extra] = sComment.Substring(iExtStart).Trim();
+                                    break;
+                                }
                             }
                         }
                     }
@@ -44,21 +44,21 @@ namespace Breezee.AutoSQLExecutor.Core
                 if (dr.Table.Columns.Contains(DBColumnEntity.SqlString.Comments))
                 {
                     dr[DBColumnEntity.SqlString.Comments] = sComment.TrimEnd(charSplits);
+                    string sColumnName = arr[0].Trim();
                     dr[DBColumnEntity.SqlString.NameCN] = arr[0].Trim();
                     if (arr.Length > 1)
                     {
                         if (dr.Table.Columns.Contains(DBColumnEntity.SqlString.Extra))
                         {
-                            //从第二个数组字符开始截取
-                            string sNext = arr[1];
-                            if (string.IsNullOrEmpty(sNext))
+                            foreach (string sExt in arr)
                             {
-                                dr[DBColumnEntity.SqlString.Extra] = sNext;
-                            }
-                            else
-                            {
-                                int iExtStart = sComment.IndexOf(sNext);
-                                dr[DBColumnEntity.SqlString.Extra] = sComment.Substring(iExtStart).Trim();
+                                if (!sColumnName.Equals(sExt))
+                                {
+                                    //只有值跟表名不一样时，才取开始截取字符
+                                    int iExtStart = sComment.IndexOf(sExt);
+                                    dr[DBColumnEntity.SqlString.Extra] = sComment.Substring(iExtStart).Trim();
+                                    break;
+                                }
                             }
                         }
                     }
