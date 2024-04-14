@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 
@@ -123,6 +124,8 @@ namespace Breezee.AutoSQLExecutor.MySql
         /// <returns>表</returns>
         public override DataTable QueryHadParamSqlData(string sHadParaSql, List<FuncParam> listParam = null, DbConnection conn = null, DbTransaction dbTran = null)
         {
+            //开始计时
+            Stopwatch stopwatch = Stopwatch.StartNew();
             try
             {
                 //数据库连接是否为空
@@ -165,15 +168,24 @@ namespace Breezee.AutoSQLExecutor.MySql
                         adapter.SelectCommand.Parameters.Add(sp);
                     }
                 }
+                
                 //查询数据并返回
                 DataTable dt = new DataTable();
                 adapter.SelectCommand.CommandTimeout = 60 * 60 * 10;
                 adapter.Fill(dt);
                 dt.TableName = Guid.NewGuid().ToString("N");
+                stopwatch.Stop(); //结束计时
+                //写SQL日志
+                LogSql(SqlLogType.Normal, sHadParaSql, listParam, stopwatch.ElapsedMilliseconds);
                 return dt;
             }
             catch (Exception ex)
             {
+                if (stopwatch.IsRunning)
+                {
+                    stopwatch.Stop();
+                }
+                LogSql(SqlLogType.Error, sHadParaSql, listParam, stopwatch.ElapsedMilliseconds,ex); //写SQL日志
                 throw ex;
             }
         }
@@ -200,47 +212,66 @@ namespace Breezee.AutoSQLExecutor.MySql
         /// <returns>返回影响记录条数</returns>
         public override int ExecuteNonQueryHadParamSql(string sHadParaSql, List<FuncParam> listParam = null, DbConnection conn = null, DbTransaction dbTran = null)
         {
-            //数据库连接是否为空
-            if (conn == null)
+            //开始计时
+            Stopwatch stopwatch = Stopwatch.StartNew();
+            try
             {
+                //数据库连接是否为空
+                if (conn == null)
+                {
+                    if (dbTran == null)
+                    {
+                        conn = GetCurrentConnection();
+                    }
+                    else
+                    {
+                        conn = dbTran.Connection;
+                    }
+                    if (conn.State != ConnectionState.Open)
+                    {
+                        conn.Open();
+                    }
+                }
+                //构造命令
+                MySqlCommand sqlCommon;
                 if (dbTran == null)
                 {
-                    conn = GetCurrentConnection();
+                    sqlCommon = new MySqlCommand(sHadParaSql, (MySqlConnection)conn);
                 }
                 else
                 {
-                    conn = dbTran.Connection;
+                    sqlCommon = new MySqlCommand(sHadParaSql, (MySqlConnection)conn, (MySqlTransaction)dbTran);
                 }
-                if (conn.State != ConnectionState.Open)
-                {
-                    conn.Open();
-                }
-            }
-            //构造命令
-            MySqlCommand sqlCommon;
-            if (dbTran == null)
-            {
-                sqlCommon = new MySqlCommand(sHadParaSql, (MySqlConnection)conn);
-            }
-            else
-            {
-                sqlCommon = new MySqlCommand(sHadParaSql, (MySqlConnection)conn, (MySqlTransaction)dbTran);
-            }
 
-            if (listParam != null)
-            {
-                foreach (FuncParam item in listParam)
+                if (listParam != null)
                 {
-                    MySqlParameter sp = new MySqlParameter(item.Code, item.Value);
-                    if (item.FuncParamType == FuncParamType.DateTime)
+                    foreach (FuncParam item in listParam)
                     {
-                        sp.DbType = DbType.DateTime;
+                        MySqlParameter sp = new MySqlParameter(item.Code, item.Value);
+                        if (item.FuncParamType == FuncParamType.DateTime)
+                        {
+                            sp.DbType = DbType.DateTime;
+                        }
+                        sqlCommon.Parameters.Add(sp);
                     }
-                    sqlCommon.Parameters.Add(sp);
                 }
+                
+                //执行SQL
+                int iAff = sqlCommon.ExecuteNonQuery();
+                stopwatch.Stop(); //结束计时
+                //写SQL日志
+                LogSql(SqlLogType.Normal, sHadParaSql, listParam,stopwatch.ElapsedMilliseconds);
+                return iAff;
             }
-
-            return sqlCommon.ExecuteNonQuery();
+            catch (Exception ex)
+            {
+                if (stopwatch.IsRunning)
+                {
+                    stopwatch.Stop();
+                }
+                LogSql(SqlLogType.Error, sHadParaSql, listParam, stopwatch.ElapsedMilliseconds,ex); //写SQL日志
+                throw ex;
+            }
         }
         #endregion
 
@@ -856,15 +887,35 @@ namespace Breezee.AutoSQLExecutor.MySql
         {
             DataTable dtSource = QueryAutoParamSqlData(sSql, dic);
             DataTable dtReturn = DT_SchemaTableColumn;
+            //所有表相关字段的变量
+            string sPreTableName = string.Empty;
+            string sPreTableSchema = string.Empty;
+            string sPreTableNameUpper = string.Empty;
+            string sPreTableNameLower = string.Empty;
+            string sPreTableRemark = string.Empty;
+            string sPreTableExt = string.Empty;
+
             foreach (DataRow drS in dtSource.Rows)
             {
                 DataRow dr = dtReturn.NewRow();
-                
-                dr[DBColumnEntity.SqlString.TableSchema] = drS["TABLE_SCHEMA"];//Schema跟数据库名称一样
-                dr[DBColumnEntity.SqlString.TableName] = drS["TABLE_NAME"];
-                dr[DBColumnEntity.SqlString.TableNameUpper] = drS["TABLE_NAME"].ToString().FirstLetterUpper();
-                dr[DBColumnEntity.SqlString.TableNameLower] = drS["TABLE_NAME"].ToString().FirstLetterUpper(false);
-                DBSchemaCommon.SetComment(dr, drS["TABLE_COMMENT"].ToString());
+                //先前表名为空，或先前表名跟现在行表名不一致时，才重新对表字段变量赋值
+                if(string.IsNullOrEmpty(sPreTableName) || !sPreTableName.Equals(drS["TABLE_NAME"].ToString()))
+                {
+                    sPreTableName = drS["TABLE_NAME"].ToString();
+                    sPreTableSchema = drS["TABLE_SCHEMA"].ToString();//Schema跟数据库名称一样
+                    sPreTableNameUpper = drS["TABLE_NAME"].ToString().FirstLetterUpper();
+                    sPreTableNameLower = drS["TABLE_NAME"].ToString().FirstLetterUpper(false);
+                    DBSchemaCommon.SetComment(dr, drS["TABLE_COMMENT"].ToString());
+                    sPreTableRemark = dr[DBColumnEntity.SqlString.TableComments].ToString();
+                    sPreTableExt = dr[DBColumnEntity.SqlString.TableExtra].ToString();
+                }
+                dr[DBColumnEntity.SqlString.TableSchema] = sPreTableSchema;
+                dr[DBColumnEntity.SqlString.TableName] = sPreTableName;
+                dr[DBColumnEntity.SqlString.TableNameUpper] = sPreTableNameUpper;
+                dr[DBColumnEntity.SqlString.TableNameLower] = sPreTableNameLower;
+                dr[DBColumnEntity.SqlString.TableComments] = sPreTableRemark;
+                dr[DBColumnEntity.SqlString.TableExtra] = sPreTableExt;
+
                 dr[DBColumnEntity.SqlString.SortNum] = drS["ORDINAL_POSITION"];
                 dr[DBColumnEntity.SqlString.Name] = drS["COLUMN_NAME"];
                 dr[DBColumnEntity.SqlString.NameUpper] = drS["COLUMN_NAME"].ToString().FirstLetterUpper();

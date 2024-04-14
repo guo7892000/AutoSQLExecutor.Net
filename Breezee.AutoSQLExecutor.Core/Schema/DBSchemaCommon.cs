@@ -11,6 +11,7 @@ namespace Breezee.AutoSQLExecutor.Core
     {
         public static void SetComment(DataRow dr, string sComment,bool isTable=true)
         {
+            sComment = sComment.Trim();
             if (string.IsNullOrEmpty(sComment)) return;
             char[] charSplits = new char[] { ':', '：', ' ', '\r' };
             string[] arr = sComment.Split(charSplits, StringSplitOptions.RemoveEmptyEntries);

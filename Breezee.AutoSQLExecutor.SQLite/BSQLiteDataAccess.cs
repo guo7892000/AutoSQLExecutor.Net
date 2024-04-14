@@ -9,6 +9,7 @@ using System.Xml;
 using Breezee.AutoSQLExecutor.Core;
 using System.Collections;
 using Breezee.Core.Interface;
+using System.Diagnostics;
 
 namespace Breezee.AutoSQLExecutor.SQLite
 {
@@ -114,6 +115,8 @@ namespace Breezee.AutoSQLExecutor.SQLite
         /// <returns>表</returns>
         public override DataTable QueryHadParamSqlData(string sHadParaSql, List<FuncParam> listParam = null, DbConnection conn = null, DbTransaction dbTran = null)
         {
+            //开始计时
+            Stopwatch stopwatch = Stopwatch.StartNew();
             try
             {
                 //数据库连接是否为空
@@ -156,15 +159,25 @@ namespace Breezee.AutoSQLExecutor.SQLite
                         adapter.SelectCommand.Parameters.Add(sp);
                     }
                 }
+                
                 //查询数据并返回
                 DataTable dt = new DataTable();
                 adapter.SelectCommand.CommandTimeout = 60 * 60 * 10;
                 adapter.Fill(dt);
                 dt.TableName = Guid.NewGuid().ToString("N");
+                stopwatch.Stop(); //结束计时
+                //写SQL日志
+                LogSql(SqlLogType.Normal, sHadParaSql, listParam, stopwatch.ElapsedMilliseconds);
                 return dt;
             }
             catch (Exception ex)
             {
+                if (stopwatch.IsRunning)
+                {
+                    stopwatch.Stop();
+                }
+                //写SQL日志
+                LogSql(SqlLogType.Error, sHadParaSql, listParam, stopwatch.ElapsedMilliseconds,ex);
                 throw ex;
             }
         }
@@ -187,48 +200,68 @@ namespace Breezee.AutoSQLExecutor.SQLite
         /// <returns>返回影响记录条数</returns>
         public override int ExecuteNonQueryHadParamSql(string sHadParaSql, List<FuncParam> listParam = null, DbConnection conn = null, DbTransaction dbTran = null)
         {
-            //数据库连接是否为空
-            if (conn == null)
+            //开始计时
+            Stopwatch stopwatch = Stopwatch.StartNew();
+            try
             {
+                //数据库连接是否为空
+                if (conn == null)
+                {
+                    if (dbTran == null)
+                    {
+                        conn = GetCurrentConnection();
+                    }
+                    else
+                    {
+                        conn = dbTran.Connection;
+                    }
+                    if (conn.State != ConnectionState.Open)
+                    {
+                        conn.Open();
+                    }
+                }
+                //构造命令
+                SQLiteCommand sqlCommon;
                 if (dbTran == null)
                 {
-                    conn = GetCurrentConnection();
+                    sqlCommon = new SQLiteCommand(sHadParaSql, (SQLiteConnection)conn);
                 }
                 else
                 {
-                    conn = dbTran.Connection;
+                    sqlCommon = new SQLiteCommand(sHadParaSql, (SQLiteConnection)conn, (SQLiteTransaction)dbTran);
                 }
-                if (conn.State != ConnectionState.Open)
-                {
-                    conn.Open();
-                }
-            }
-            //构造命令
-            SQLiteCommand sqlCommon;
-            if (dbTran == null)
-            {
-                sqlCommon = new SQLiteCommand(sHadParaSql, (SQLiteConnection)conn);
-            }
-            else
-            {
-                sqlCommon = new SQLiteCommand(sHadParaSql, (SQLiteConnection)conn, (SQLiteTransaction)dbTran);
-            }
 
-            if (listParam != null)
-            {
-                foreach (FuncParam item in listParam)
+                if (listParam != null)
                 {
-                    SQLiteParameter sp = new SQLiteParameter(item.Code, item.Value);
-                    if (item.FuncParamType == FuncParamType.DateTime)
+                    foreach (FuncParam item in listParam)
                     {
-                        sp.DbType = DbType.DateTime;
+                        SQLiteParameter sp = new SQLiteParameter(item.Code, item.Value);
+                        if (item.FuncParamType == FuncParamType.DateTime)
+                        {
+                            sp.DbType = DbType.DateTime;
+                        }
+                        sqlCommon.Parameters.Add(sp);
                     }
-                    sqlCommon.Parameters.Add(sp);
                 }
-            }
 
-            if (conn.State == ConnectionState.Closed) conn.Open();
-            return sqlCommon.ExecuteNonQuery();
+                if (conn.State == ConnectionState.Closed) conn.Open();
+
+                //执行SQL
+                int iAff = sqlCommon.ExecuteNonQuery();
+                stopwatch.Stop(); //结束计时
+                                  //写SQL日志
+                LogSql(SqlLogType.Normal, sHadParaSql, listParam, stopwatch.ElapsedMilliseconds);
+                return iAff;
+            }
+            catch (Exception ex)
+            {
+                if (stopwatch.IsRunning)
+                {
+                    stopwatch.Stop();
+                }
+                LogSql(SqlLogType.Error, sHadParaSql, listParam, stopwatch.ElapsedMilliseconds,ex); //写SQL日志
+                throw ex;
+            }
         }
         #endregion
 

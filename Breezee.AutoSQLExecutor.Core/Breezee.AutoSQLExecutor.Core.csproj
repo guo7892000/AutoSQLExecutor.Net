@@ -27,6 +27,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="System.Configuration.ConfigurationManager" Version="6.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\001_BreezeeCore.Net\Breezee.Core.Interface\Breezee.Core.Interface.csproj" />
     <ProjectReference Include="..\..\004_MyPeach.Net\MyPeachNet\MyPeachNet.csproj" />
   </ItemGroup>

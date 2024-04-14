@@ -8,6 +8,7 @@ using System.IO;
 using System.Collections.Generic;
 using System;
 using System.Linq;
+using static Breezee.AutoSQLExecutor.Core.SqlLogConfig;
 
 /*********************************************************************
  * 对象名称：数据访问接口
@@ -1332,6 +1333,112 @@ namespace Breezee.AutoSQLExecutor.Core
             else if (item is string)
             {
                 paramNew.FuncParamType = FuncParamType.String;
+            }
+        }
+
+        /// <summary>
+        /// 写SQL日志
+        /// </summary>
+        /// <param name="sHadParaSql">已参数化的SQL信息</param>
+        /// <param name="sqlLogType">SQL日志类型</param>
+        /// <param name="listParam">参数集合</param>
+        /// <param name="executeMicroSecond">执行耗秒数</param>
+        /// <param name="sourceEx">源异常对象</param>
+        public static void LogSql(SqlLogType sqlLogType, string sHadParaSql,List<FuncParam> listParam = null,long executeMicroSecond=0,Exception sourceEx=null)
+        {
+            try
+            {
+                string sPath = sqlLogType== SqlLogType.Normal?SqlLogConfig.RigthSqlLogPath: SqlLogConfig.ErrorSqlLogPath;
+                SqlLogAddType addType = sqlLogType == SqlLogType.Normal ? SqlLogConfig.RightSqlLogAddType : SqlLogConfig.ErrorSqlLogAddType;
+                string sPre = sqlLogType == SqlLogType.Normal ? "sql.ok." : "sql.err.";
+
+                if (SqlLogConfig.IsEnableRigthSqlLog && !string.IsNullOrEmpty(sPath))
+                {
+                    if (!sPath.EndsWith("\\"))
+                    {
+                        sPath = sPath + "\\";
+                    }
+
+                    string sLogFileName = sPre + DateTime.Now.ToString("yyyy-MM-dd") + ".txt";
+                    if (sPath.IndexOf(":\\") < 0)
+                    {
+                        //相对路径：要加上前缀
+                        sPath = AppDomain.CurrentDomain.SetupInformation.ApplicationBase + sPath;
+                    }
+                    if (!Directory.Exists(sPath))
+                    {
+                        Directory.CreateDirectory(sPath);
+                    }
+                    else
+                    {
+                        FileInfo[] arrFiles = new DirectoryInfo(sPath).GetFiles("*.*", SearchOption.AllDirectories);
+                        int iDays = sqlLogType == SqlLogType.Normal ? SqlLogConfig.RightSqlLogKeepDays : SqlLogConfig.ErrorSqlLogKeepDays;
+                        foreach (FileInfo file in arrFiles)
+                        {
+                            if (DateTime.Now.Subtract(file.CreationTime.AddDays(iDays)).TotalHours > 0)
+                            {
+                                file.Delete(); //删除文件
+                            }
+                        }
+                    }
+
+                    string sFileName = sPath + sLogFileName;
+                    StringBuilder sb = new StringBuilder();
+                    sb.AppendLine("*******************【" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + "】**************************");
+                    StringBuilder sbParam = new StringBuilder();
+                    sb.AppendLine("【SQL语句】：");
+                    sb.AppendLine(sHadParaSql);
+                    if(listParam == null || listParam.Count == 0)
+                    {
+                        sb.AppendLine("【无参数值传入】");
+                    }
+                    else
+                    {
+                        sb.AppendLine("【SQL参数】：");
+                        foreach (var item in listParam)
+                        {
+                            sbParam.AppendLine(item.ToString());
+                        }
+                        sb.Append(sbParam.toString());
+                    }
+                    //确定执行时长
+                    if (executeMicroSecond > 0)
+                    {
+                        var iSecond = executeMicroSecond / 1000.0;
+                        if(iSecond>60.0)
+                        {
+                            sb.AppendLine("【执行时长(分钟)】：" + (iSecond / 60.0).ToString());
+                        }
+                        else
+                        {
+                            sb.AppendLine("【执行时长(秒)】：" + iSecond.ToString());
+                        }
+                    }
+                    //错误SQL信息
+                    if(sqlLogType == SqlLogType.Error && sourceEx!=null)
+                    {
+                        sb.AppendLine("【错误信息】："+ sourceEx.Message);
+                    }
+                    sb.Append(Environment.NewLine);
+
+                    if(addType== SqlLogAddType.InsertBegin)
+                    {
+                        string sOldContent = string.Empty;
+                        if (File.Exists(sFileName))
+                        {
+                            sOldContent = File.ReadAllText(sFileName);
+                        }
+                        File.WriteAllText(sFileName, sb.ToString() + sOldContent, Encoding.UTF8); //最新内容写在前面
+                    }
+                    else
+                    {
+                        File.AppendAllText(sFileName, sb.ToString(), Encoding.UTF8); //追加日志内容
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
             }
         }
     }
