@@ -41,7 +41,24 @@ where A.CITY_ID=B.CITY_ID
             foreach (Match item in mc)
             {
                 string sValue = item.Value.Trim();
-                string sTableName = sValue.Substring(sValue.LastIndexOf(" ")).Trim();
+                int iIndexTable = sValue.LastIndexOf(" ");
+                string sTableName = string.Empty;
+                if(iIndexTable == -1)
+                {
+                    //没有空格
+                    string[]  sArrTalbe = sValue.Split('\n');
+                    //FROM和表名间使用换行符时
+                    if (sArrTalbe.Length > 1)
+                    {
+                        sTableName = sArrTalbe[1];
+                    }
+                }
+                else
+                {
+                    //有空格
+                    sTableName = sValue.Substring(iIndexTable).Trim();
+                }
+
                 if (sTableName.Contains("."))
                 {
                     sTableName = sTableName.Substring(sTableName.IndexOf(".") + 1);
@@ -62,7 +79,23 @@ where A.CITY_ID=B.CITY_ID
             foreach (Match item in mc)
             {
                 string sValue = item.Value.Trim();
-                string sTableName = sValue.Substring(sValue.LastIndexOf(" ")).Trim();
+                int iIndexTable = sValue.LastIndexOf(" ");
+                string sTableName = string.Empty;
+                if (iIndexTable == -1)
+                {
+                    //没有空格
+                    string[] sArrTalbe = sValue.Split('\n');
+                    //FROM和表名间使用换行符时
+                    if (sArrTalbe.Length > 1)
+                    {
+                        sTableName = sArrTalbe[1];
+                    }
+                }
+                else
+                {
+                    //有空格
+                    sTableName = sValue.Substring(iIndexTable).Trim();
+                }
                 if (sTableName.Contains("."))
                 {
                     sTableName = sTableName.Substring(sTableName.IndexOf(".") + 1);
