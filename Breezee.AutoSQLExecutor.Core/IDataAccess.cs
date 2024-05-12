@@ -461,7 +461,6 @@ namespace Breezee.AutoSQLExecutor.Core
         }
         #endregion
 
-
         #region 查询未参数化的SQL语句
         /// <summary>
         /// 查询未参数化的SQL语句
@@ -779,12 +778,12 @@ namespace Breezee.AutoSQLExecutor.Core
                 DataTable dtData = QueryHadParamSqlData(pageDataSql, listParam, conn, dbTran);
 
                 //3.返回分页结果                
-                dicRes[StaticConstant.TOTAL_COUNT] = totalRowCount; //总记录数
-                dicRes[StaticConstant.PAGE_SIZE] = pageCount; //总页数
-                dicRes[StaticConstant.FRA_QUERY_RESULT] = dtData;
+                dicRes[AutoSQLCoreStaticConstant.TOTAL_COUNT] = totalRowCount; //总记录数
+                dicRes[AutoSQLCoreStaticConstant.PAGE_SIZE] = pageCount; //总页数
+                dicRes[AutoSQLCoreStaticConstant.FRA_QUERY_RESULT] = dtData;
 
-                dicRes[StaticConstant.FRA_RETURN_FLAG] = "1";
-                dicRes[StaticConstant.FRA_USER_MSG] = "查询成功！";
+                dicRes[AutoSQLCoreStaticConstant.FRA_RETURN_FLAG] = "1";
+                dicRes[AutoSQLCoreStaticConstant.FRA_USER_MSG] = "查询成功！";
                 return dicRes;
             }
             catch (Exception ex)
@@ -828,7 +827,7 @@ namespace Breezee.AutoSQLExecutor.Core
                 string strNoExistsKey = "";
                 if (keys == null || keys.Count() == 0)
                 {
-                    lstKeys = dicParam.Keys.Where(x => x != StaticConstant.UNIQUE_FLAG);
+                    lstKeys = dicParam.Keys.Where(x => x != AutoSQLCoreStaticConstant.UNIQUE_FLAG);
                 }
                 else
                 {
@@ -1128,8 +1127,9 @@ namespace Breezee.AutoSQLExecutor.Core
         /// <param name="isSetCommonColumnsValue">是否设置通用列默认值</param>
         /// <param name="loginUser">当前登录用户，为空时创建人、修改人、组织ID为空</param>
         /// <returns></returns>
-        public DataTable GetTableConstruct(string strTableName, List<string> columnsList = null)
+        public DataTable GetTableConstruct(DbEntity dbEntity, List<string> columnsList = null)
         {
+            string strTableName = dbEntity.DBTableName;
             DataTable dtDetail = GetSchemaTableColumns(strTableName);
             if (dtDetail == null || dtDetail.Rows.Count == 0)
             {
@@ -1214,7 +1214,7 @@ namespace Breezee.AutoSQLExecutor.Core
         /// <param name="dicSave"></param>
         /// <param name="DbTran"></param>
         /// <returns></returns>
-        public bool DeleteTableData(IBaseEntity strTableName, IDictionary<string, string> dicSave, DbConnection conn = null, DbTransaction DbTran = null)
+        public bool DeleteTableData(DbEntity strTableName, IDictionary<string, string> dicSave, DbConnection conn = null, DbTransaction DbTran = null)
         {
             if (dicSave.Keys.Count == 0)
             {

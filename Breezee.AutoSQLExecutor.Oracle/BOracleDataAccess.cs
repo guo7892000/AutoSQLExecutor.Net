@@ -313,12 +313,12 @@ namespace Breezee.AutoSQLExecutor.Oracle
                     strInsertEnd.Append(sDouHao + strOraclePartPre + dc.ColumnName);//全部使用参数形式
 
                     #region 动态固定值处理
-                    if (dc.ExtendedProperties[StaticConstant.FRA_TABLE_EXTEND_PROPERTY_COLUMNS_FIX_VALUE] != null)
+                    if (dc.ExtendedProperties[AutoSQLCoreStaticConstant.FRA_TABLE_EXTEND_PROPERTY_COLUMNS_FIX_VALUE] != null)
                     {
                         DbDefaultValueType tcy;
                         try
                         {
-                            tcy = (DbDefaultValueType)dc.ExtendedProperties[StaticConstant.FRA_TABLE_EXTEND_PROPERTY_COLUMNS_FIX_VALUE];
+                            tcy = (DbDefaultValueType)dc.ExtendedProperties[AutoSQLCoreStaticConstant.FRA_TABLE_EXTEND_PROPERTY_COLUMNS_FIX_VALUE];
                         }
                         catch (Exception exTans)
                         {

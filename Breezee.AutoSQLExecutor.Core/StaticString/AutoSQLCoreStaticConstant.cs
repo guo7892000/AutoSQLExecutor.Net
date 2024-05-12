@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Breezee.AutoSQLExecutor.Core
 {
-    public static partial class StaticConstant
+    public static partial class AutoSQLCoreStaticConstant
     {
         /// <summary>
         /// Dictionary唯一ID关键字

@@ -17,9 +17,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="Entity\BaseEntityField.cs" />
     <Compile Remove="Entity\BaseFuncParam.cs" />
+    <Compile Remove="Entity\IBaseEntity.cs" />
     <Compile Remove="Enum\DataBaseType.cs" />
     <Compile Remove="Enum\DbServerInfo.cs" />
+    <Compile Remove="Enum\EntityType.cs" />
   </ItemGroup>
 
   <ItemGroup>

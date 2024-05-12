@@ -92,13 +92,13 @@ namespace Breezee.AutoSQLExecutor.Core
         public PageParam GetPageParam(IDictionary<string, string> dicQuery)
         {
             int pageSize = 50;
-            if (!int.TryParse(dicQuery.SafeGet(StaticConstant.PAGE_SIZE), out pageSize))
+            if (!int.TryParse(dicQuery.SafeGet(AutoSQLCoreStaticConstant.PAGE_SIZE), out pageSize))
             {
                 pageSize = 50;
             }
 
             int pageNo = 1;
-            if (!int.TryParse(dicQuery.SafeGet(StaticConstant.PAGE_NO), out pageNo))
+            if (!int.TryParse(dicQuery.SafeGet(AutoSQLCoreStaticConstant.PAGE_NO), out pageNo))
             {
                 pageNo = 1;
             }

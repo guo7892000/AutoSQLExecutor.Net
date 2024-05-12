@@ -332,12 +332,12 @@ namespace Breezee.AutoSQLExecutor.SqlServer
                     #region 动态固定值处理
                     /*注：SQL Server处理InsertCommand命令SQL时，支持以函数代替参数。
                         * 即例如：@CREATE_TIME 可被 getdate() 替代*/
-                    if (dc.ExtendedProperties[StaticConstant.FRA_TABLE_EXTEND_PROPERTY_COLUMNS_FIX_VALUE] != null)
+                    if (dc.ExtendedProperties[AutoSQLCoreStaticConstant.FRA_TABLE_EXTEND_PROPERTY_COLUMNS_FIX_VALUE] != null)
                     {
                         DbDefaultValueType tcy;
                         try
                         {
-                            tcy = (DbDefaultValueType)dc.ExtendedProperties[StaticConstant.FRA_TABLE_EXTEND_PROPERTY_COLUMNS_FIX_VALUE];
+                            tcy = (DbDefaultValueType)dc.ExtendedProperties[AutoSQLCoreStaticConstant.FRA_TABLE_EXTEND_PROPERTY_COLUMNS_FIX_VALUE];
                         }
                         catch (Exception exTans)
                         {
