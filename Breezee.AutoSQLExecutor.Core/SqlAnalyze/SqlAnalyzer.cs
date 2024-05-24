@@ -35,7 +35,7 @@ where A.CITY_ID=B.CITY_ID
              */
 
             //针对FROM、JOIN、UPDATE、MERGE INTO后面的表的正则表达式：暂不支持表名前加数据库名
-            string tablePattern = @"\s*(FROM|JOIN|UPDATE|MERGE\s+INTO)\s+([\[`]\w+[\]`].)?[\[`]?\w+[\]`]?";
+            string tablePattern = @"\s*(FROM|JOIN|UPDATE|MERGE\s+INTO)\s+([\[`]?\w+[\]`]?\.)?[\[`]?\w+[\]`]?";
             Regex regex = new Regex(tablePattern, RegexOptions.IgnoreCase);
             MatchCollection mc = regex.Matches(sSql);
             foreach (Match item in mc)
@@ -73,7 +73,7 @@ where A.CITY_ID=B.CITY_ID
             }
 
             //针对FROM后面逗号分陋的表名：目前暂没考虑表名前加AS或数据库名称
-            tablePattern = @"\s+(FROM)\s+([\[`]\w+[\]`].)?[\[`]?\w+[\]`]?(\s+\w+)*(\s*,\s*([\[`]\w+[\]`].)?[\[`]?\w+[\]`]?(\s+\w+)*)*";
+            tablePattern = @"\s+(FROM)\s+([\[`]?\w+[\]`]?\.)?[\[`]?\w+[\]`]?(\s+(AS)?\w+)*(\s*,\s*([\[`]?\w+[\]`]?\.)?[\[`]?\w+[\]`]?\s+(AS)?\w+)*";
             regex = new Regex(tablePattern, RegexOptions.IgnoreCase);
             mc = regex.Matches(sSql);
             foreach (Match item in mc)
