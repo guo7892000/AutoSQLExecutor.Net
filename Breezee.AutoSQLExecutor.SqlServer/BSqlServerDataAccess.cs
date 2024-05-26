@@ -9,8 +9,9 @@ using System.Xml;
 using Breezee.AutoSQLExecutor.Core;
 using Breezee.Core.Interface;
 using System.Data.SqlClient;
-using System.Diagnostics;   //net4引入此空间
-//using Microsoft.Data.SqlClient;   //net6引入此空间
+//using System.Diagnostics;   //net4引入此空间
+using Microsoft.Data.SqlClient;
+using System.Diagnostics;   //net6引入此空间
 
 namespace Breezee.AutoSQLExecutor.SqlServer
 {
