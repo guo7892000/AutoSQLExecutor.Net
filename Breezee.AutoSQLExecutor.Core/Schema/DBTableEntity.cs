@@ -21,6 +21,7 @@ namespace Breezee.AutoSQLExecutor.Core
         public string Comments;
         public string NameCN;
         public string Extra;
+        public bool IsView;
         public static DBTableEntity GetEntity(DataRow dr)
         {
             DBTableEntity entity = new DBTableEntity();
@@ -33,6 +34,7 @@ namespace Breezee.AutoSQLExecutor.Core
             entity.Comments = dr[SqlString.Comments].ToString();
             entity.NameCN = dr[SqlString.NameCN].ToString();
             entity.Extra = dr[SqlString.Extra].ToString();
+            entity.IsView = "1".Equals(dr[SqlString.IsView].ToString()) ? true : false;
             return entity;
         }
         public static DataTable GetTableStruct()
@@ -47,7 +49,8 @@ namespace Breezee.AutoSQLExecutor.Core
                 new DataColumn(SqlString.NameLower),
                 new DataColumn(SqlString.Comments),
                 new DataColumn(SqlString.NameCN),
-                new DataColumn(SqlString.Extra) 
+                new DataColumn(SqlString.Extra),
+                new DataColumn(SqlString.IsView)
             });
             dt.TableName = "DBSchemaTables";
             return dt;
@@ -68,6 +71,7 @@ namespace Breezee.AutoSQLExecutor.Core
             public static string Extra = "TABLE_EXTRA";//额外信息
             public static string NameUpper = "TABLE_NAME_UPPER";//表编码的大驼峰式UpperCamelCase
             public static string NameLower = "TABLE_NAME_LOWER";//表编码的小驼峰式lowerCamelCase
+            public static string IsView = "TABLE_IS_VIEW";//是否视图
         }
     }
 }

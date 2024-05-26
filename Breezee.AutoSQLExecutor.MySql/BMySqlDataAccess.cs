@@ -774,9 +774,10 @@ namespace Breezee.AutoSQLExecutor.MySql
         {
             if (string.IsNullOrEmpty(sSchema)) sSchema = DbServer.Database.ToLower();
             //TABLE_SCHEMA为数据库存名。TABLE_SCHEMA,TABLE_NAME,TABLE_COMMENT,`ENGINE`
-            string sSql = @"SELECT TABLE_SCHEMA,TABLE_NAME,TABLE_COMMENT
+            string sSql = @"SELECT TABLE_SCHEMA,TABLE_NAME,TABLE_COMMENT,
+                        IF(TABLE_TYPE='VIEW','1','0') AS TABLE_IS_VIEW
                     FROM information_schema.`TABLES`
-                    WHERE TABLE_TYPE = 'BASE TABLE'
+                    WHERE TABLE_TYPE IN ('BASE TABLE','VIEW')
                     AND TABLE_SCHEMA = '#TABLE_SCHEMA#'
                     AND TABLE_NAME = '#TABLE_NAME#'
             ";
@@ -795,6 +796,7 @@ namespace Breezee.AutoSQLExecutor.MySql
                 dr[DBTableEntity.SqlString.NameLower] = drS["TABLE_NAME"].ToString().FirstLetterUpper(false);
                 DBSchemaCommon.SetComment(dr, drS["TABLE_COMMENT"].ToString());
                 dr[DBTableEntity.SqlString.DBName] = DbServer.Database;//数据库名
+                dr[DBTableEntity.SqlString.IsView] = drS["TABLE_IS_VIEW"]; //是否视图
                 dtReturn.Rows.Add(dr);
             }
             return dtReturn;
@@ -834,7 +836,7 @@ namespace Breezee.AutoSQLExecutor.MySql
 			            B.TABLE_COMMENT
             FROM information_schema.`COLUMNS` A
             JOIN information_schema.`TABLES` B 
-                ON A.TABLE_SCHEMA = B.TABLE_SCHEMA AND A.TABLE_NAME = B.TABLE_NAME AND B.TABLE_TYPE = 'BASE TABLE'
+                ON A.TABLE_SCHEMA = B.TABLE_SCHEMA AND A.TABLE_NAME = B.TABLE_NAME AND B.TABLE_TYPE IN ('BASE TABLE','VIEW')
             WHERE 1=1
                 AND A.TABLE_NAME = '#TABLE_NAME#'
                 AND A.TABLE_NAME IN (#TABLE_NAME_LIST:LS#)

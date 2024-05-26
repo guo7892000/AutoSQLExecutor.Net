@@ -821,17 +821,24 @@ namespace Breezee.AutoSQLExecutor.PostgreSQL
 
             //SCHEMANAME一般为public。tablename,SCHEMANAME,TABLENAME,TABLEOWNER,TABLESPACE,HASINDEXES,HASRULES,HASTRIGGERS,ROWSECURITY
             if (string.IsNullOrEmpty(sSchema)) sSchema = "public";
-
+            //增加视图：未包括物化视图
             string sSql = @"SELECT A.TABLENAME AS TABLE_NAME,A.SCHEMANAME AS TABLE_SCHEMA,A.TABLEOWNER AS TABLE_OWNER,
-                    d.description AS TABLE_COMMENT
+                    d.description AS TABLE_COMMENT,'0' AS TABLE_IS_VIEW
                 FROM PG_TABLES A
                 LEFT JOIN PG_CLASS B
                   ON A.TABLENAME = B.RELNAME
 				LEFT JOIN pg_description d 
 				  ON d.objoid = B.oid AND d.objsubid = '0'
                 WHERE 1=1 
-                AND SCHEMANAME = '#TABLE_SCHEMA#'
-                AND TABLENAME = '#TABLE_NAME#'
+                AND A.SCHEMANAME = '#TABLE_SCHEMA#'
+                AND A.TABLENAME = '#TABLE_NAME#'
+UNION ALL
+SELECT A.VIEWNAME AS TABLE_NAME,A.SCHEMANAME AS TABLE_SCHEMA,A.VIEWOWNER AS TABLE_OWNER,
+                    '' AS TABLE_COMMENT,'1' AS TABLE_IS_VIEW
+                FROM PG_VIEWS A
+                WHERE 1=1 
+                AND A.SCHEMANAME = '#TABLE_SCHEMA#'
+                AND A.VIEWNAME = '#TABLE_NAME#'
             ";
            
             dic["TABLE_SCHEMA"] = sSchema;
@@ -848,6 +855,7 @@ namespace Breezee.AutoSQLExecutor.PostgreSQL
                 DBSchemaCommon.SetComment(dr, drS["TABLE_COMMENT"].ToString());
                 dr[DBTableEntity.SqlString.Owner] = drS["TABLE_OWNER"];//拥有者
                 dr[DBTableEntity.SqlString.DBName] = DbServer.Database;//数据库名
+                dr[DBTableEntity.SqlString.IsView] = drS["TABLE_IS_VIEW"]; //是否视图
                 dtReturn.Rows.Add(dr);
             }
             return dtReturn;
@@ -910,7 +918,7 @@ namespace Breezee.AutoSQLExecutor.PostgreSQL
 				  ON d.objoid = B.oid AND d.objsubid = '0'
                 WHERE 1=1
 			 ) C ON A.TABLE_NAME = C.TABLE_NAME AND A.TABLE_SCHEMA = C.TABLE_SCHEMA
-            WHERE 1=1 and A.is_updatable='YES'
+            WHERE 1=1 
                 AND upper(A.TABLE_SCHEMA)='PUBLIC'  
                 AND A.TABLE_NAME = '#TABLE_NAME#'
                 AND A.TABLE_NAME IN (#TABLE_NAME_LIST:LS#)

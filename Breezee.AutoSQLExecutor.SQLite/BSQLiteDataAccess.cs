@@ -781,10 +781,10 @@ namespace Breezee.AutoSQLExecutor.SQLite
                 }
                 sDBName = sSchema;
             }
-            //TYPE,NAME,TBL_NAME,ROOTPAGE,SQL：注这里的表名区分大小写，必须两边都转换为大写然后比较！！
-            sSql = string.Format(@"SELECT NAME AS TABLE_NAME
+            /*TYPE,NAME,TBL_NAME,ROOTPAGE,SQL：注这里的表名区分大小写，必须两边都转换为大写然后比较！增加视图支持*/
+            sSql = string.Format(@"SELECT NAME AS TABLE_NAME,CASE WHEN TYPE='view' THEN '1' ELSE '0' END AS TABLE_IS_VIEW
                 FROM {0}.SQLITE_MASTER 
-                WHERE TYPE = 'table' 
+                WHERE TYPE IN ('table','view') 
                  AND UPPER(NAME)= '#TABLE_NAME#'
                 ", sDBName);
             //不支持备注信息和架构
@@ -801,6 +801,7 @@ namespace Breezee.AutoSQLExecutor.SQLite
                 dr[DBTableEntity.SqlString.NameUpper] = drS["TABLE_NAME"].ToString().FirstLetterUpper();
                 dr[DBTableEntity.SqlString.NameLower] = drS["TABLE_NAME"].ToString().FirstLetterUpper(false);
                 dr[DBTableEntity.SqlString.DBName] = sDBName;
+                dr[DBTableEntity.SqlString.IsView] = drS["TABLE_IS_VIEW"]; //是否视图
                 dtReturn.Rows.Add(dr);
             }
             return dtReturn;
@@ -824,7 +825,7 @@ namespace Breezee.AutoSQLExecutor.SQLite
             //当传空时，查询全部表的全部列
             if (listTableName.Count == 0)
             {
-                string sSql = "select name from sqlite_master where type='table' order by name";
+                string sSql = "select name from sqlite_master where type IN ('table','view')  order by name";
                 DataTable dtSource = QueryHadParamSqlData(sSql,new Dictionary<string,string>());
                 foreach (DataRow dr in dtSource.Rows)
                 {

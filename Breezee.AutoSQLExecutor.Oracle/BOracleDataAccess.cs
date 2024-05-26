@@ -744,14 +744,21 @@ namespace Breezee.AutoSQLExecutor.Oracle
             {
                 sSchema = DbServer.UserName; //TABLE_SCHEMA为登录的用户。登录的用户其创建的对象为其所有。
             }
-            //注：即使创建表语句表名或字段名为小写，但Oracle自动会转换为大写
-            string sSql = @"SELECT A.OWNER AS TABLE_SCHEMA, A.TABLE_NAME,B.COMMENTS AS TABLE_COMMENT,A.TABLESPACE_NAME
+            //注：即使创建表语句表名或字段名为小写，但Oracle自动会转换为大写。加上视图
+            string sSql = @"SELECT A.OWNER AS TABLE_SCHEMA, A.TABLE_NAME,B.COMMENTS AS TABLE_COMMENT,A.TABLESPACE_NAME,'0' AS TABLE_IS_VIEW
                     FROM ALL_TABLES A
                     LEFT JOIN ALL_TAB_COMMENTS B
                       ON A.TABLE_NAME = B.TABLE_NAME AND A.OWNER=B.OWNER
                     WHERE 1=1
                     AND A.TABLE_NAME = '#TABLE_NAME#'
                     AND A.OWNER = '#TABLE_SCHEMA#'
+                    UNION ALL
+                    SELECT A.OWNER AS TABLE_SCHEMA, A.OBJECT_NAME AS TABLE_NAME,'' AS TABLE_COMMENT,'' AS TABLESPACE_NAME,'1' AS TABLE_IS_VIEW
+                    FROM ALL_OBJECTS A
+                    WHERE 1=1
+                     AND A.OBJECT_TYPE = 'VIEW'
+                     AND A.OWNER = '#TABLE_SCHEMA#'
+                     AND A.OBJECT_NAME = '#TABLE_NAME#'
                 ";
 
             IDictionary<string, string> dic = new Dictionary<string, string>();
@@ -780,6 +787,7 @@ namespace Breezee.AutoSQLExecutor.Oracle
                     dr[DBTableEntity.SqlString.Owner] = drS["TABLE_SCHEMA"];
                     dr[DBTableEntity.SqlString.DBName] = drS["TABLE_SCHEMA"];
                 }
+                dr[DBTableEntity.SqlString.IsView] = drS["TABLE_IS_VIEW"]; //是否视图
                 dtReturn.Rows.Add(dr);
             }
             return dtReturn;
@@ -808,7 +816,7 @@ namespace Breezee.AutoSQLExecutor.Oracle
              *  虽然不报错了，默认值字符需要进一步截取，但速度还是很慢，所以最终决定先不查默认值，等后面有需要再单独查默认值。 by BreezeeHui 2024-3-16    
              */
             string sSql = @"SELECT A.OWNER AS TABLE_SCHEMA,
-                A.TABLE_NAME,
+                NVL(A.TABLE_NAME,V.OBJECT_NAME) AS TABLE_NAME,
                 A.COLUMN_ID AS ORDINAL_POSITION,
                 A.COLUMN_NAME,
                 B.COMMENTS AS COLUMN_COMMENT,
@@ -824,8 +832,10 @@ namespace Breezee.AutoSQLExecutor.Oracle
             FROM ALL_TAB_COLS A
             LEFT JOIN ALL_COL_COMMENTS B 
                 ON A.TABLE_NAME=B.TABLE_NAME AND A.COLUMN_NAME=B.COLUMN_NAME AND A.OWNER=B.OWNER
-            JOIN ALL_TABLES T
+            LEFT JOIN ALL_TABLES T
                 ON A.TABLE_NAME = T.TABLE_NAME AND A.OWNER=T.OWNER  
+            LEFT JOIN ALL_OBJECTS V
+                ON V.OBJECT_TYPE = 'VIEW' AND V.OWNER = A.OWNER AND V.OBJECT_NAME = A.TABLE_NAME
             LEFT JOIN ALL_TAB_COMMENTS C
                 ON A.TABLE_NAME = C.TABLE_NAME AND A.OWNER = C.OWNER
             LEFT JOIN (

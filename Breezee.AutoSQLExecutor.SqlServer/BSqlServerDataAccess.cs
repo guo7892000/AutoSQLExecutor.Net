@@ -9,9 +9,8 @@ using System.Xml;
 using Breezee.AutoSQLExecutor.Core;
 using Breezee.Core.Interface;
 using System.Data.SqlClient;
-//using System.Diagnostics;   //net4引入此空间
-using Microsoft.Data.SqlClient;
-using System.Diagnostics;   //net6引入此空间
+using System.Diagnostics;   //net4引入此空间
+//using Microsoft.Data.SqlClient;   //net6引入此空间
 
 namespace Breezee.AutoSQLExecutor.SqlServer
 {
@@ -815,16 +814,17 @@ namespace Breezee.AutoSQLExecutor.SqlServer
                 }
             }           
 
-            //SqlServer表名区分大小写
+            //SqlServer表名区分大小写，增加视图
             string sSql = @"SELECT  B.NAME AS TABLE_SCHEMA ,
                     A.NAME AS TABLE_NAME,
-                    C.VALUE AS TABLE_COMMENT
+                    C.VALUE AS TABLE_COMMENT,
+                    CASE WHEN A.TYPE='V' THEN '1' ELSE '0' END AS TABLE_IS_VIEW
             FROM    SYS.OBJECTS A
             JOIN SYS.SCHEMAS B ON A.SCHEMA_ID = B.SCHEMA_ID
             LEFT JOIN SYS.EXTENDED_PROPERTIES C ON C.MAJOR_ID=A.OBJECT_ID AND C.MINOR_ID=0
-            WHERE   A.TYPE = 'U'
-                    AND A.NAME = '#TABLE_NAME#'
-                    AND B.NAME= '#TABLE_SCHEMA#'
+            WHERE  A.TYPE IN ('U','V')
+               AND A.NAME = '#TABLE_NAME#'
+               AND B.NAME= '#TABLE_SCHEMA#'
              ORDER BY A.Name
             ";
 
@@ -842,6 +842,7 @@ namespace Breezee.AutoSQLExecutor.SqlServer
                 dr[DBTableEntity.SqlString.NameLower] = drS["TABLE_NAME"].ToString().FirstLetterUpper(false);
                 DBSchemaCommon.SetComment(dr, drS["TABLE_COMMENT"].ToString());
                 dr[DBTableEntity.SqlString.DBName] = DbServer.Database;//数据库名
+                dr[DBTableEntity.SqlString.IsView] = drS["TABLE_IS_VIEW"]; //是否视图
                 dtReturn.Rows.Add(dr);
             }
             return dtReturn;
@@ -880,7 +881,7 @@ namespace Breezee.AutoSQLExecutor.SqlServer
             LEFT JOIN SYSTYPES B
 	            ON A.XUSERTYPE = B.XUSERTYPE
             JOIN SYS.OBJECTS D
-	            ON A.ID = D.object_id  AND D.TYPE = 'U' AND D.NAME <> 'DTPROPERTIES'
+	            ON A.ID = D.object_id  AND D.TYPE IN ('U','V') AND D.NAME <> 'DTPROPERTIES'
 			JOIN SYS.SCHEMAS S ON D.SCHEMA_ID = S.SCHEMA_ID
             LEFT JOIN SYSCOMMENTS E
 	            ON A.CDEFAULT = E.ID
