@@ -1348,11 +1348,11 @@ namespace Breezee.AutoSQLExecutor.Core
         {
             try
             {
-                string sPath = sqlLogType== SqlLogType.Normal?SqlLogConfig.RigthSqlLogPath: SqlLogConfig.ErrorSqlLogPath;
-                SqlLogAddType addType = sqlLogType == SqlLogType.Normal ? SqlLogConfig.RightSqlLogAddType : SqlLogConfig.ErrorSqlLogAddType;
+                string sPath = sqlLogType== SqlLogType.Normal? RigthSqlLogPath : ErrorSqlLogPath;
+                SqlLogAddType addType = sqlLogType == SqlLogType.Normal ? RightSqlLogAddType : ErrorSqlLogAddType;
                 string sPre = sqlLogType == SqlLogType.Normal ? "sql.ok." : "sql.err.";
 
-                if (SqlLogConfig.IsEnableRigthSqlLog && !string.IsNullOrEmpty(sPath))
+                if ((IsEnableRigthSqlLog || IsEnableErrorSqlLog) && !string.IsNullOrEmpty(sPath))
                 {
                     if (!sPath.EndsWith("\\"))
                     {
@@ -1372,7 +1372,7 @@ namespace Breezee.AutoSQLExecutor.Core
                     else
                     {
                         FileInfo[] arrFiles = new DirectoryInfo(sPath).GetFiles("*.*", SearchOption.AllDirectories);
-                        int iDays = sqlLogType == SqlLogType.Normal ? SqlLogConfig.RightSqlLogKeepDays : SqlLogConfig.ErrorSqlLogKeepDays;
+                        int iDays = sqlLogType == SqlLogType.Normal ? RightSqlLogKeepDays : ErrorSqlLogKeepDays;
                         foreach (FileInfo file in arrFiles)
                         {
                             if (DateTime.Now.Subtract(file.CreationTime.AddDays(iDays)).TotalHours > 0)
