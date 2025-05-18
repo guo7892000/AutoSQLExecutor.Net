@@ -9,9 +9,10 @@ namespace Breezee.AutoSQLExecutor.PostgreSQL
     {
         public static class Text
         {
+            public static readonly string varchar = "varchar"; //变长，有长度限制
+            public static readonly string characterVarying = "character varying"; //变长，有长度限制。简写为：varchar
             public static readonly string character = "character";  //f定长,不足补空白
             public static readonly string characterArr = "character[]";
-            public static readonly string characterVarying = "character varying"; //变长，有长度限制
             public static readonly string characterVaryingArr = "character varying[]";
             public static readonly string text = "text";    //变长，无长度限制
             public static readonly string textArr = "text[]";
@@ -28,6 +29,7 @@ namespace Breezee.AutoSQLExecutor.PostgreSQL
             public static readonly string dateArr = "date[]";
             public static readonly string interval = "interval";    //时间间隔
             public static readonly string intervalArr = "interval[]";
+            public static readonly string timestamp = "timestamp";//时间戳
             public static readonly string timeWithTimeZone = "time with time zone"; //只用于一日内时间，带时区
             public static readonly string timeWithTimeZoneArr = "time with time zone[]";
             public static readonly string timeWithdoutTimeZone = "time withdout time zone"; //只用于一日内时间
@@ -70,6 +72,7 @@ namespace Breezee.AutoSQLExecutor.PostgreSQL
         public static class Precision
         {
             public static readonly string numeric = "numeric";  //用户指定的精度，精确：小数点前 131072 位；小数点后 16383 位
+            public static readonly string Decimal = "decimal";
             public static readonly string numericArr = "numeric[]";
             public static readonly string doublePrecision = "double precision";//用户指定的精度，精确：小数点前 131072 位；小数点后 16383 位
             public static readonly string doublePrecisionArr = "double precision[]";

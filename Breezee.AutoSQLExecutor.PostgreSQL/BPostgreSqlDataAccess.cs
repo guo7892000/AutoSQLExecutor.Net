@@ -32,8 +32,10 @@ namespace Breezee.AutoSQLExecutor.PostgreSQL
 
         List<string> _typeListCharLength = new List<string>();
         List<string> _typeListPrecison = new List<string>();
-        public override List<string> CharLengthTypes { get => (new string[] { PostgreSqlColumnType.Text.character, PostgreSqlColumnType.Text.Char, PostgreSqlColumnType.Text.characterVarying }).ToList(); }
-        public override List<string> PrecisonTypes { get => (new string[] { PostgreSqlColumnType.Precision.numeric, PostgreSqlColumnType.Precision.doublePrecision, PostgreSqlColumnType.Precision.real }).ToList(); }
+        public override List<string> CharLengthTypes { get => (new string[] { PostgreSqlColumnType.Text.character, PostgreSqlColumnType.Text.Char, PostgreSqlColumnType.Text.characterVarying, 
+            PostgreSqlColumnType.Text.varchar }).ToList(); }
+        public override List<string> PrecisonTypes { get => (new string[] { PostgreSqlColumnType.Precision.numeric, PostgreSqlColumnType.Precision.doublePrecision,  PostgreSqlColumnType.Precision.Decimal,
+            PostgreSqlColumnType.Precision.real }).ToList(); }
 
 
         #endregion
